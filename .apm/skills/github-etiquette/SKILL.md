@@ -15,12 +15,19 @@ and pull request as a separate action that must satisfy the rules below.
 
 1. Determine the currently checked-out branch immediately before running the
    commit.
-2. If the branch is `main` or `master`, stop before creating the commit.
-3. Warn the user that committing directly to that branch violates basic GitHub
+2. Resolve the GitHub repository's configured default branch immediately
+   before committing. Prefer the GitHub API; if it is unavailable, refresh and
+   inspect the GitHub remote's symbolic `HEAD` rather than assuming a branch
+   name.
+3. If the default branch cannot be resolved, treat `main` and `master` as
+   protected default-branch candidates instead of silently bypassing the guard.
+4. If the current branch matches the resolved default branch or a protected
+   fallback candidate, stop before creating the commit.
+5. Warn the user that committing directly to that branch violates basic GitHub
    etiquette because changes should be made on a feature branch.
-4. Ask for explicit confirmation to create this specific commit on the default
-   branch.
-5. Run the commit only after the user gives positive confirmation. An absent,
+6. Ask for explicit confirmation to create this specific commit on the
+   protected branch.
+7. Run the commit only after the user gives positive confirmation. An absent,
    ambiguous, or negative response is not confirmation.
 
 Confirmation applies only to the commit for which it was requested. Do not

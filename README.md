@@ -24,9 +24,9 @@ Verify the installation with `apm --version`.
 #### `github-etiquette`
 
 An [Agent Skill](https://agentskills.io/) for Git repositories with a GitHub
-remote. It requires confirmation before committing on `main` or `master`,
-requires every GitHub pull request to start as a draft, and adds an issue-closing
-reference when the related issue is known.
+remote. It requires confirmation before committing on the repository's
+configured default branch, requires every GitHub pull request to start as a
+draft, and adds an issue-closing reference when the related issue is known.
 
 ## Install
 
