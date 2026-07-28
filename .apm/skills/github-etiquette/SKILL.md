@@ -42,5 +42,6 @@ reuse confirmation from an earlier commit.
 3. When a related issue is known, add a GitHub closing keyword on its own line
    in the pull request body, such as `Closes #123`. Use the full issue URL when
    needed to identify an issue outside the pull request's repository.
-4. Verify that both the draft state and issue-closing reference are present
-   before submitting the pull request creation request.
+4. Verify the draft state before submitting the pull request creation request.
+   If a related issue is known, also verify its closing reference. Otherwise,
+   verify that no fabricated issue reference was added.
