@@ -35,8 +35,10 @@ reuse confirmation from an earlier commit.
 
 ## When Creating A Pull Request
 
-1. Always create the pull request as a draft. For example, use `--draft` with
-   `gh pr create` or set `draft: true` when using an API.
+1. Always create the pull request as a draft. Use the available GitHub
+   integration and set `draft: true` explicitly when using an API or MCP tool.
+   With another client, use its equivalent draft option. Do not assume `gh` is
+   installed.
 2. Determine whether an issue is related from the user's request and the known
    task context. Do not invent or guess an issue number.
 3. When a related issue is known, add a GitHub closing keyword on its own line
