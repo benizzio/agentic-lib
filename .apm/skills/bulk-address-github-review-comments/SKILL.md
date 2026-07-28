@@ -31,15 +31,15 @@ metadata:
 
 ## Determine The Pull Request
 
-1. If the prompt includes a Pull Request URL, use it.
-2. Otherwise derive the Pull Request from the checked-out local branch:
-   - inspect the local git remote to identify the GitHub repository
-   - inspect the checked-out branch name
-   - map that branch to its open pull request in the same repository
-3. If the current branch does not map to exactly one pull request, stop and ask the user for the Pull Request URL.
-4. Do not guess between multiple candidate pull requests.
-5. If the derived pull request and a supplied Pull Request URL disagree, stop and ask the user which pull request should be used.
-6. If the pull request cannot be derived from the currently checked-out local branch, stop and ask the user for the Pull Request URL.
+1. Inspect the local git remote to identify the checked-out GitHub repository and inspect the checked-out branch name.
+2. If the prompt includes a Pull Request URL:
+   - resolve the supplied pull request's head repository and head branch
+   - compare both with the checked-out GitHub repository and branch
+   - if either differs, stop and ask the user for clarification
+   - proceed with the supplied URL only when both match
+3. Otherwise map the checked-out branch to its open pull request in the checked-out GitHub repository.
+4. If the current branch does not map to exactly one pull request, stop and ask the user for the Pull Request URL.
+5. Do not guess between multiple candidate pull requests.
 
 ## Collect Unresolved Review Threads
 
