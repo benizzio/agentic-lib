@@ -21,6 +21,13 @@ Verify the installation with `apm --version`.
 
 ### Skills
 
+#### `bulk-address-github-review-comments`
+
+An [Agent Skill](https://agentskills.io/) for processing unresolved GitHub
+pull request review threads as a confirmed, sequential queue. It delegates
+each atomic implementation unit to one sub-agent, verifies the resulting work,
+then commits, pushes, and replies to each review thread in order.
+
 #### `github-etiquette`
 
 An [Agent Skill](https://agentskills.io/) for Git repositories with a GitHub
