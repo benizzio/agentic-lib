@@ -6,7 +6,7 @@ Portable agent artifacts packaged with
 ## Prerequisites
 
 - [Microsoft APM](https://microsoft.github.io/apm/getting-started/installation/)
-  `v0.26.0` or a compatible release installed and available on `PATH`.
+  `v0.26.0` installed and available on `PATH`.
 
 Verify the installation with `apm --version`.
 
@@ -153,6 +153,11 @@ Edit artifacts only under `.apm/`, with each skill in
 pinned release:
 
 ```bash
+case "$(apm --version)" in
+  *"version 0.26.0 "*) ;;
+  *) printf '%s\n' "APM v0.26.0 is required for validation." >&2; exit 1 ;;
+esac
+
 apm audit --file .apm/skills/<skill-name>/SKILL.md
 apm pack
 ```
