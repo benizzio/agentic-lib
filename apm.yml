@@ -7,5 +7,6 @@ dependencies:
   apm: []
   mcp: []
 includes:
+  - .apm/skills/bulk-address-github-review-comments/
   - .apm/skills/github-etiquette/
 scripts: {}
