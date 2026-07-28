@@ -152,22 +152,26 @@ For the current work unit:
 1. Re-read all full threads included in the unit before editing or delegating.
 2. Re-read the referenced code and any nearby code needed to understand the request.
 3. Check other unresolved threads for overlapping files or behavior. Keep their requirements in mind, but do not reply to them yet.
-4. Prepare a full sub-agent handoff that satisfies the Sub-Agent Handoff Requirements.
-5. Delegate the current unit to one sub-agent with clean context.
-6. After the sub-agent returns, inspect the local diff and its report.
-7. Apply any main-agent corrections needed to keep the change small, consistent, and complete.
-8. Verify the accepted change with the proper local test scope.
+4. Establish an explicit pre-implementation worktree and index baseline with `git status --short`, `git diff`, and `git diff --cached`. If the index already contains changes, stop before implementation. Record any pre-existing worktree changes in the ledger so they can be excluded from the unit.
+5. Prepare a full sub-agent handoff that satisfies the Sub-Agent Handoff Requirements.
+6. Delegate the current unit to one sub-agent with clean context.
+7. After the sub-agent returns, inspect the local diff and its report.
+8. Apply any main-agent corrections needed to keep the change small, consistent, and complete.
+9. Verify the accepted change with the proper local test scope.
    - Use repository-provided test or coverage entrypoints when they exist.
    - Start with the narrowest sufficient test scope.
    - Widen the scope when the change affects shared behavior or when the narrow scope is not credible evidence.
-9. If the change cannot be verified, do not reply in GitHub. Stop and report the blocker.
+10. If the change cannot be verified, do not reply in GitHub. Stop and report the blocker.
 
 For each review thread in the original queue whose requirements are now satisfied by accepted and verified work:
 
 1. Re-read the full thread before replying.
 2. Confirm the current code state and verification evidence still address that thread.
 3. If the thread requires code changes and the accepted work has not yet been committed:
-   - stage only the related modified files
+   - compare the current worktree and index with the recorded baseline and identify only the hunks attributable to the current thread or accepted work unit
+   - stage only those attributable changes; if a file also contains pre-existing or unrelated hunks, use patch-level staging such as `git add -p` to exclude them
+   - inspect `git diff --cached` and confirm every staged hunk is attributable to the current thread or accepted work unit
+   - if the staged changes include unrelated hunks or the related changes cannot be isolated safely, stop without committing or pushing and report the blocker
    - commit with `git commit -m "Addressing review comment"`
    - push the current branch
 4. If an earlier sequential change already fully addressed this thread:
@@ -189,26 +193,30 @@ For the current thread:
 1. Re-read the full thread before delegation.
 2. Read the referenced code and any nearby code needed to understand the request.
 3. Check other unresolved threads for overlapping files or behavior. Keep their requirements in mind, but do not reply to them yet.
-4. Delegate the smallest correct patch for the current thread to one clean-context sub-agent.
-5. Inspect the returned diff and apply any main-agent corrections needed to keep the code consistent with related unresolved feedback.
-6. Verify the change with the proper local test scope.
+4. Establish an explicit pre-implementation worktree and index baseline with `git status --short`, `git diff`, and `git diff --cached`. If the index already contains changes, stop before implementation. Record any pre-existing worktree changes in the ledger so they can be excluded from the thread change.
+5. Delegate the smallest correct patch for the current thread to one clean-context sub-agent.
+6. Inspect the returned diff and apply any main-agent corrections needed to keep the code consistent with related unresolved feedback.
+7. Verify the change with the proper local test scope.
    - Use repository-provided test or coverage entrypoints when they exist.
    - Start with the narrowest sufficient test scope.
    - Widen the scope when the change affects shared behavior or when the narrow scope is not credible evidence.
-7. If the change cannot be verified, do not reply in GitHub. Stop and report the blocker.
-8. If the current thread requires code changes:
-   - stage only the related modified files
+8. If the change cannot be verified, do not reply in GitHub. Stop and report the blocker.
+9. If the current thread requires code changes:
+   - compare the current worktree and index with the recorded baseline and identify only the hunks attributable to the current thread
+   - stage only those attributable changes; if a file also contains pre-existing or unrelated hunks, use patch-level staging such as `git add -p` to exclude them
+   - inspect `git diff --cached` and confirm every staged hunk is attributable to the current thread
+   - if the staged changes include unrelated hunks or the related changes cannot be isolated safely, stop without committing or pushing and report the blocker
    - commit with `git commit -m "Addressing review comment"`
    - push the current branch
-9. If an earlier sequential change already fully addressed this thread:
+10. If an earlier sequential change already fully addressed this thread:
    - do not create an empty commit
    - still confirm the current code state and verification evidence before replying
-10. After the push for the current thread, reply only to that thread.
+11. After the push for the current thread, reply only to that thread.
    - summarize the solution
    - mention the verification that was run
    - reference other related review threads when that context matters
-11. Do not resolve the thread.
-12. Move to the next unresolved thread only after the current thread has been fixed, verified, committed when needed, pushed, and replied to.
+12. Do not resolve the thread.
+13. Move to the next unresolved thread only after the current thread has been fixed, verified, committed when needed, pushed, and replied to.
 
 ## Strict Sequencing Rules
 
