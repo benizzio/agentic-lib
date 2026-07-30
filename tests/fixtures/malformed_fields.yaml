@@ -1,0 +1,4 @@
+fields:
+  Basic Details:
+    - label: name
+    - required: true

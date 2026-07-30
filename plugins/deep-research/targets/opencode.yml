@@ -1,0 +1,26 @@
+schema_version: 1
+target: opencode
+package_name: deep-research-opencode
+
+frontmatter:
+  source/agents/web-search.md:
+    mode: subagent
+    permission:
+      edit: deny
+      websearch: allow
+      webfetch: allow
+      question: allow
+      read: allow
+      glob: allow
+      grep: allow
+      bash:
+        "*": deny
+        "date *": allow
+
+tests:
+  project_paths:
+    - .opencode/agents/web-search.md
+    - .agents/skills/research/SKILL.md
+  global_paths:
+    - .config/opencode/agents/web-search.md
+    - .agents/skills/research/SKILL.md

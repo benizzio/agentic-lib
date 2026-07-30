@@ -1,0 +1,13 @@
+# Generated; do not edit.
+name: deep-research-copilot
+version: "0.1.0"
+description: Structured deep-research workflows and web-search agent for copilot.
+author: benizzio
+license: MIT
+dependencies:
+  apm: []
+  mcp: []
+includes:
+- .apm/agents/
+- .apm/skills/
+scripts: {}

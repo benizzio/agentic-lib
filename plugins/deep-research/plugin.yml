@@ -1,0 +1,23 @@
+schema_version: 1
+
+package:
+  version: 0.1.0
+  description: Structured deep-research workflows and web-search agent.
+  author: benizzio
+  license: MIT
+  repository: https://github.com/benizzio/agentic-lib
+
+artifacts:
+  - source: source/agents/web-search.md
+    destination: .apm/agents/web-search.agent.md
+    frontmatter: true
+
+  - source: source/skills/
+    destination: .apm/skills/
+    frontmatter_glob: "**/SKILL.md"
+
+  - source: source/modules/
+    destination: .apm/skills/research/references/web-search-modules/
+
+  - source: UPSTREAM_LICENSE
+    destination: .apm/skills/research/references/UPSTREAM_LICENSE
