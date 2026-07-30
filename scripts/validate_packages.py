@@ -202,7 +202,11 @@ def _content_checks(package: Package) -> list[str]:
                 frontmatter(path)
             except ValidationError as error:
                 errors.append(str(error))
-        if re.search(r"(?:^|[/\\])\.(?:claude|codex)(?:[/\\]|$)", text, re.IGNORECASE):
+        if re.search(
+            r"(?:^|[/\\])\.(?:claude|codex)(?:[/\\]|$)",
+            text,
+            re.IGNORECASE | re.MULTILINE,
+        ):
             errors.append(f"{path}: contains a Claude/Codex absolute-path fragment")
         marker_patterns = (
             r"@@GENERATOR:",

@@ -99,5 +99,28 @@ class RunTests(unittest.TestCase):
         self.assertEqual(result, "command executable not found: apm")
 
 
+class ContentChecksTests(unittest.TestCase):
+    def test_rejects_claude_path_fragment_on_interior_line(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            markdown = root / ".apm" / "skills" / "example" / "notes.md"
+            markdown.parent.mkdir(parents=True)
+            markdown.write_text("Before\n.claude/settings.json\nAfter\n", encoding="utf-8")
+            package = validate_packages.Package(
+                plugin="deep-research",
+                target="opencode",
+                root=root,
+                config_path=root / "target.yml",
+                config={},
+            )
+
+            errors = validate_packages._content_checks(package)
+
+            self.assertIn(
+                f"{markdown}: contains a Claude/Codex absolute-path fragment",
+                errors,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
