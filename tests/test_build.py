@@ -122,6 +122,23 @@ class BuilderTestCase(unittest.TestCase):
         self.assertIn(b"- .apm/agents/", manifest)
         self.assertIn(b"- .apm/skills/", manifest)
 
+    def test_top_level_apm_file_is_generated_and_included_as_a_file(self) -> None:
+        self.write_plugin(
+            PLUGIN
+            + """\
+  - source: source/AGENTS.md
+    destination: .apm/AGENTS.md
+"""
+        )
+        (self.plugin / "source" / "AGENTS.md").write_text("Instructions.\n", encoding="utf-8")
+
+        files = self.generated()
+        generated = files[build.PurePosixPath("example/alpha/.apm/AGENTS.md")]
+        manifest = files[build.PurePosixPath("example/alpha/apm.yml")]
+        self.assertEqual(generated, b"Instructions.\n")
+        self.assertIn(b"- .apm/AGENTS.md\n", manifest)
+        self.assertNotIn(b"- .apm/AGENTS.md/", manifest)
+
     def test_directory_resources_are_copied(self) -> None:
         guide = self.generated()[
             build.PurePosixPath("example/alpha/.apm/skills/example/references/guide.md")

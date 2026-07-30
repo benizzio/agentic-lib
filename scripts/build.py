@@ -443,9 +443,13 @@ def _render_markdown(
 
 
 def _render_manifest(plugin: PluginSpec, target: TargetSpec, destinations: set[PurePosixPath]) -> bytes:
-    include_roots = sorted(
-        {PurePosixPath(".apm") / path.parts[1] for path in destinations if len(path.parts) >= 3},
-        key=lambda item: item.as_posix(),
+    includes = sorted(
+        {path.as_posix() for path in destinations if len(path.parts) == 2}
+        | {
+            f"{(PurePosixPath('.apm') / path.parts[1]).as_posix()}/"
+            for path in destinations
+            if len(path.parts) >= 3
+        }
     )
     manifest = {
         "name": target.package_name,
@@ -454,7 +458,7 @@ def _render_manifest(plugin: PluginSpec, target: TargetSpec, destinations: set[P
         "author": plugin.package.author,
         "license": plugin.package.license,
         "dependencies": {"apm": [], "mcp": []},
-        "includes": [f"{path.as_posix()}/" for path in include_roots],
+        "includes": includes,
         "scripts": {},
     }
     return ("# Generated; do not edit.\n" + _dump_yaml(manifest)).encode("utf-8")
