@@ -168,6 +168,61 @@ class ValidateJsonTests(unittest.TestCase):
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("File not found", completed.stdout)
 
+    def test_cli_does_not_discover_fields_for_explicit_missing_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / "fields.yaml").write_text(
+                (FIXTURES / "field_categories.yaml").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            worktree = project / "worktree"
+            worktree.mkdir()
+            missing = worktree / "missing-fields.yaml"
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(MODULE_PATH),
+                    "--fields",
+                    str(missing),
+                    "--json",
+                    str(FIXTURES / "complete_nested.json"),
+                ],
+                cwd=worktree,
+                text=True,
+                capture_output=True,
+            )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn(f"[ERROR] fields.yaml not found: {missing}", completed.stdout)
+
+    def test_cli_discovers_fields_when_option_is_omitted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            fields = project / "fields.yaml"
+            fields.write_text(
+                (FIXTURES / "field_categories.yaml").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            worktree = project / "worktree"
+            worktree.mkdir()
+
+            for cwd in (project, worktree):
+                with self.subTest(cwd=cwd):
+                    completed = subprocess.run(
+                        [
+                            sys.executable,
+                            str(MODULE_PATH),
+                            "--json",
+                            str(FIXTURES / "complete_nested.json"),
+                        ],
+                        cwd=cwd,
+                        text=True,
+                        capture_output=True,
+                    )
+
+                    self.assertEqual(completed.returncode, 0, completed.stdout)
+                    self.assertIn("Field definition file:", completed.stdout)
+
     def test_cli_reports_malformed_json_without_traceback(self):
         with tempfile.TemporaryDirectory() as directory:
             malformed = Path(directory) / "malformed.json"

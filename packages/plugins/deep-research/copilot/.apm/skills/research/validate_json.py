@@ -198,7 +198,7 @@ def main():
         description="Validate whether JSON files cover all fields defined in fields.yaml"
     )
     parser.add_argument(
-        "--fields", "-f", type=str, help="Path to fields.yaml", default="fields.yaml"
+        "--fields", "-f", type=str, help="Path to fields.yaml"
     )
     parser.add_argument(
         "--json", "-j", type=str, nargs="*", help="JSON file paths to validate"
@@ -212,8 +212,8 @@ def main():
     )
     parser.add_argument("--quiet", "-q", action="store_true", help="Show summary only")
     args = parser.parse_args()
-    fields_path = Path(args.fields)
-    if not fields_path.exists():
+    fields_path = Path(args.fields or "fields.yaml")
+    if args.fields is None and not fields_path.exists():
         for path in (Path.cwd() / "fields.yaml", Path.cwd().parent / "fields.yaml"):
             if path.exists():
                 fields_path = path
