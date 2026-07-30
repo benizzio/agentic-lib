@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-import json
+import copy
 import os
 import re
 import shlex
@@ -13,6 +13,10 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import yaml
+from yaml.events import AliasEvent
+from yaml.nodes import MappingNode
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -33,99 +37,73 @@ class Package:
     config: dict[str, Any]
 
 
-def _scalar(value: str) -> Any:
-    value = value.strip()
-    if not value:
-        return None
-    if value in ("null", "Null", "NULL", "~"):
-        return None
-    if value.lower() in ("true", "false"):
-        return value.lower() == "true"
-    if value.startswith(("\"", "'")):
-        if value[0] == "\"":
-            return json.loads(value)
-        if not value.endswith("'"):
-            raise ValidationError(f"unterminated quoted scalar: {value}")
-        return value[1:-1].replace("''", "'")
-    if re.fullmatch(r"-?\d+", value):
-        return int(value)
-    if value == "[]":
-        return []
-    if value == "{}":
-        return {}
-    return value
+class _StrictLoader(yaml.SafeLoader):
+    """SafeLoader variant that rejects aliases and duplicate mapping keys."""
+
+    yaml_implicit_resolvers = copy.deepcopy(yaml.SafeLoader.yaml_implicit_resolvers)
+
+    def compose_node(self, parent: Any, index: Any) -> Any:
+        if self.check_event(AliasEvent):
+            event = self.peek_event()
+            raise yaml.constructor.ConstructorError(
+                None, None, f"YAML aliases are not allowed: *{event.anchor}", event.start_mark
+            )
+        return super().compose_node(parent, index)
 
 
-def parse_yaml_subset(text: str, source: Path | str = "YAML") -> dict[str, Any]:
-    """Parse the mappings and scalar lists used by target and frontmatter files."""
-    rows: list[tuple[int, str]] = []
-    for number, raw in enumerate(text.splitlines(), 1):
-        if "\t" in raw[: len(raw) - len(raw.lstrip())]:
-            raise ValidationError(f"{source}:{number}: tabs are not valid indentation")
-        stripped = raw.strip()
-        if not stripped or stripped.startswith("#") or stripped == "---":
-            continue
-        rows.append((len(raw) - len(raw.lstrip(" ")), raw.lstrip(" ")))
-
-    def block(index: int, indent: int) -> tuple[Any, int]:
-        if index >= len(rows) or rows[index][0] < indent:
-            return {}, index
-        is_list = rows[index][1].startswith("- ") or rows[index][1] == "-"
-        result: Any = [] if is_list else {}
-        while index < len(rows):
-            current_indent, content = rows[index]
-            if current_indent < indent:
-                break
-            if current_indent != indent:
-                raise ValidationError(
-                    f"{source}: unexpected indentation before {content!r}"
-                )
-            if is_list:
-                if not content.startswith("-"):
-                    break
-                item = content[1:].strip()
-                if not item:
-                    value, index = block(index + 1, indent + 2)
-                    result.append(value)
-                else:
-                    result.append(_scalar(item))
-                    index += 1
-                continue
-            if content.startswith("-") or ":" not in content:
-                raise ValidationError(f"{source}: expected a mapping entry: {content!r}")
-            key, raw_value = content.split(":", 1)
-            key = str(_scalar(key.strip()))
-            if key in result:
-                raise ValidationError(f"{source}: duplicate key {key!r}")
-            raw_value = raw_value.strip()
-            if raw_value:
-                result[key] = _scalar(raw_value)
-                index += 1
-            elif index + 1 < len(rows) and (
-                rows[index + 1][0] > indent
-                or (rows[index + 1][0] == indent and rows[index + 1][1].startswith("-"))
-            ):
-                result[key], index = block(index + 1, rows[index + 1][0])
-            else:
-                result[key] = None
-                index += 1
-        return result, index
-
-    if not rows:
-        return {}
-    if rows[0][0] != 0:
-        raise ValidationError(f"{source}: top-level content must not be indented")
-    parsed, final_index = block(0, 0)
-    if final_index != len(rows) or not isinstance(parsed, dict):
-        raise ValidationError(f"{source}: top-level value must be a mapping")
-    return parsed
+# Match the builder's YAML semantics: only true/false are booleans and dates remain strings.
+for _first, _resolvers in list(_StrictLoader.yaml_implicit_resolvers.items()):
+    _StrictLoader.yaml_implicit_resolvers[_first] = [
+        item
+        for item in _resolvers
+        if item[0] not in {"tag:yaml.org,2002:bool", "tag:yaml.org,2002:timestamp"}
+    ]
+_StrictLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:bool", re.compile(r"^(?:true|false)$", re.IGNORECASE), list("tTfF")
+)
 
 
-def load_yaml_subset(path: Path) -> dict[str, Any]:
+def _construct_mapping(loader: _StrictLoader, node: MappingNode, deep: bool = False) -> dict[str, Any]:
+    if not isinstance(node, MappingNode):
+        raise yaml.constructor.ConstructorError(None, None, "expected a mapping", node.start_mark)
+    result: dict[str, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if not isinstance(key, str):
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping", node.start_mark,
+                "mapping keys must be strings", key_node.start_mark,
+            )
+        if key in result:
+            raise yaml.constructor.ConstructorError(
+                "while constructing a mapping", node.start_mark,
+                f"duplicate key: {key}", key_node.start_mark,
+            )
+        result[key] = loader.construct_object(value_node, deep=deep)
+    return result
+
+
+_StrictLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _construct_mapping
+)
+
+
+def parse_yaml_mapping(text: str, source: Path | str = "YAML") -> dict[str, Any]:
     try:
-        return parse_yaml_subset(path.read_text(encoding="utf-8"), path)
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        documents = list(yaml.load_all(text, Loader=_StrictLoader))
+    except yaml.YAMLError as error:
+        raise ValidationError(f"{source}: invalid YAML: {error}") from error
+    if len(documents) != 1 or not isinstance(documents[0], dict):
+        raise ValidationError(f"{source}: YAML must contain exactly one mapping document")
+    return documents[0]
+
+
+def load_yaml_mapping(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
         raise ValidationError(f"cannot read {path}: {error}") from error
+    return parse_yaml_mapping(text, path)
 
 
 def frontmatter(path: Path) -> tuple[str, dict[str, Any]]:
@@ -145,7 +123,7 @@ def frontmatter(path: Path) -> tuple[str, dict[str, Any]]:
         raw.encode("ascii")
     except UnicodeEncodeError as error:
         raise ValidationError(f"{path}: frontmatter must be ASCII-compatible") from error
-    return raw, parse_yaml_subset(raw, path)
+    return raw, parse_yaml_mapping(raw, path)
 
 
 def discover_packages(repo_root: Path = REPO_ROOT) -> list[Package]:
@@ -157,7 +135,7 @@ def discover_packages(repo_root: Path = REPO_ROOT) -> list[Package]:
     if not configs:
         raise ValidationError(f"no target configurations found under {plugin_root}")
     for config_path in configs:
-        config = load_yaml_subset(config_path)
+        config = load_yaml_mapping(config_path)
         target = config.get("target")
         if not isinstance(target, str) or not target:
             raise ValidationError(f"{config_path}: target must be a non-empty string")
