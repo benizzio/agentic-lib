@@ -168,6 +168,37 @@ class ValidateJsonTests(unittest.TestCase):
         self.assertNotEqual(completed.returncode, 0)
         self.assertIn("File not found", completed.stdout)
 
+    def test_cli_reports_malformed_json_without_traceback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            malformed = Path(directory) / "malformed.json"
+            malformed.write_text('{"name":', encoding="utf-8")
+            invocations = (
+                ["--json", str(malformed)],
+                ["--dir", directory],
+            )
+
+            for input_args in invocations:
+                with self.subTest(input_args=input_args):
+                    completed = subprocess.run(
+                        [
+                            sys.executable,
+                            str(MODULE_PATH),
+                            "--fields",
+                            str(FIXTURES / "field_categories.yaml"),
+                            *input_args,
+                        ],
+                        text=True,
+                        capture_output=True,
+                    )
+
+                    self.assertEqual(completed.returncode, 1)
+                    self.assertIn(
+                        f"[ERROR] Invalid JSON in {malformed}", completed.stdout
+                    )
+                    self.assertNotIn(
+                        "Traceback", completed.stdout + completed.stderr
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

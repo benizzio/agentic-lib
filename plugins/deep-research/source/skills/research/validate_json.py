@@ -249,9 +249,13 @@ def main():
         sys.exit(1)
     results = []
     for json_path in json_files:
-        result = validate_json(
-            json_path, all_fields, required_fields, field_categories
-        )
+        try:
+            result = validate_json(
+                json_path, all_fields, required_fields, field_categories
+            )
+        except json.JSONDecodeError as error:
+            print(f"[ERROR] Invalid JSON in {json_path}: {error}")
+            sys.exit(1)
         results.append(result)
         print_result(result, verbose=not args.quiet)
     line = "=" * 60
