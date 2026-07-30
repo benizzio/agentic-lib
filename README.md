@@ -267,6 +267,29 @@ or stale. `make validate` additionally runs builder and validator unit tests,
 APM audits and dry packs, and real project/global installs with APM `v0.26.0`.
 APM does not invoke this repository's builder during installation.
 
+To live-test a pushed feature branch, append `#<branch>` after the package
+subdirectory. Quote the source when the branch name contains `/`. Preview and
+then install the OpenCode package from a disposable consumer project with:
+
+```bash
+apm install \
+  'benizzio/agentic-lib/packages/plugins/deep-research/opencode#feat/example' \
+  --target opencode \
+  --dry-run
+apm install \
+  'benizzio/agentic-lib/packages/plugins/deep-research/opencode#feat/example' \
+  --target opencode
+```
+
+Add `--skill research-add-items` to select one skill from the package. Add
+`--global` to install at user scope. Uninstall by the canonical package name
+from its generated `apm.yml`; the Git ref is not part of the uninstall identity:
+
+```bash
+apm uninstall deep-research-opencode
+apm uninstall --global deep-research-opencode
+```
+
 To add a plugin, create `plugins/<name>/plugin.yml`, canonical artifacts under
 `source/`, and one or more `targets/<target>.yml` overlays. To add a target to an
 existing plugin, add its target file. The generic builder discovers both without
