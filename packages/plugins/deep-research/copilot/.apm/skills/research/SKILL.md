@@ -116,12 +116,14 @@ Ask the user whether an existing field definition file should be included. If so
 Merge {step1_output}, {step2_output} and the user's existing fields, then generate two files:
 
 **outline.yaml** (items + config):
-- topic: Research topic
-- items: Research objects list
-- execution:
-  - batch_size: Number of parallel agents (ask the user and wait for confirmation)
-  - items_per_agent: Items per agent (ask the user and wait for confirmation)
-  - output_dir: Results output directory (default: ./results)
+```yaml
+topic: Research topic
+items: Research objects list
+execution:
+  batch_size: Number of parallel agents (ask the user and wait for confirmation)
+  items_per_agent: Items per agent (ask the user and wait for confirmation)
+  output_dir: Results output directory (default: ./results)
+```
 
 **fields.yaml** (field definitions):
 - Field categories and definitions
