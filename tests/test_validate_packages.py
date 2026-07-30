@@ -114,12 +114,58 @@ class ContentChecksTests(unittest.TestCase):
                 config={},
             )
 
-            errors = validate_packages._content_checks(package)
+            errors = validate_packages._content_checks(package, root)
 
             self.assertIn(
                 f"{markdown}: contains a Claude/Codex absolute-path fragment",
                 errors,
             )
+
+
+class ValidateTests(unittest.TestCase):
+    @mock.patch.object(validate_packages, "_run", return_value=None)
+    @mock.patch.object(validate_packages, "discover_packages")
+    def test_uses_each_repo_root_without_mutating_default(
+        self, discover_packages: mock.Mock, _run: mock.Mock
+    ) -> None:
+        original_repo_root = validate_packages.REPO_ROOT
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            first_root = parent / "first"
+            second_root = parent / "second"
+            packages = []
+            for repo_root in (first_root, second_root):
+                package_root = repo_root / "packages" / "plugins" / "example" / "opencode"
+                agent = package_root / ".apm" / "agents" / "module.md"
+                agent.parent.mkdir(parents=True)
+                agent.write_text(
+                    "---\nname: module\nmode: subagent\npermission: {}\n---\nBody\n",
+                    encoding="utf-8",
+                )
+                packages.append(
+                    validate_packages.Package(
+                        plugin="example",
+                        target="opencode",
+                        root=package_root,
+                        config_path=repo_root / "target.yml",
+                        config={},
+                    )
+                )
+
+            source_module = first_root / "plugins" / "example" / "source" / "modules" / "module.md"
+            source_module.parent.mkdir(parents=True)
+            source_module.write_text("source\n", encoding="utf-8")
+            discover_packages.side_effect = ([packages[0]], [packages[1]])
+
+            with mock.patch("builtins.print"):
+                self.assertEqual(validate_packages.validate("apm", first_root), 1)
+                self.assertEqual(validate_packages.validate("apm", second_root), 0)
+
+        self.assertEqual(validate_packages.REPO_ROOT, original_repo_root)
+        self.assertEqual(
+            discover_packages.call_args_list,
+            [mock.call(first_root), mock.call(second_root)],
+        )
 
 
 if __name__ == "__main__":

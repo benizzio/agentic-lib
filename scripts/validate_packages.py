@@ -20,8 +20,6 @@ from yaml.nodes import MappingNode
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-GENERATED_ROOT = REPO_ROOT / "packages" / "plugins"
-PLUGIN_ROOT = REPO_ROOT / "plugins"
 COMMAND_TIMEOUT_SECONDS = 60
 
 
@@ -183,7 +181,7 @@ def _run(command: list[str], cwd: Path) -> str | None:
     return None
 
 
-def _content_checks(package: Package) -> list[str]:
+def _content_checks(package: Package, repo_root: Path) -> list[str]:
     errors: list[str] = []
     apm_root = package.root / ".apm"
     markdown = sorted(apm_root.rglob("*.md"))
@@ -192,7 +190,7 @@ def _content_checks(package: Package) -> list[str]:
 
     source_modules = {
         path.name
-        for path in (REPO_ROOT / "plugins" / package.plugin / "source" / "modules").rglob("*.md")
+        for path in (repo_root / "plugins" / package.plugin / "source" / "modules").rglob("*.md")
     }
     agent_root = apm_root / "agents"
     for path in markdown:
@@ -264,8 +262,6 @@ def _content_checks(package: Package) -> list[str]:
 
 
 def validate(apm: str, repo_root: Path = REPO_ROOT) -> int:
-    global REPO_ROOT
-    REPO_ROOT = repo_root
     errors: list[str] = []
     try:
         packages = discover_packages(repo_root)
@@ -274,7 +270,7 @@ def validate(apm: str, repo_root: Path = REPO_ROOT) -> int:
         return 1
     for package in packages:
         print(f"Validating {package.plugin}/{package.target}")
-        errors.extend(_content_checks(package))
+        errors.extend(_content_checks(package, repo_root))
         for path in sorted((package.root / ".apm").rglob("*.md")):
             failure = _run([apm, "audit", "--file", str(path.resolve())], package.root)
             if failure:
