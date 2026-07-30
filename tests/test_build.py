@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -257,6 +258,21 @@ class BuilderTestCase(unittest.TestCase):
             (self.root / "packages/plugins/example/alpha/.apm/agents/example.agent.md").is_file()
         )
         self.assertFalse(list((self.root / "packages").glob(".plugins.*-*")))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX mode semantics unavailable")
+    def test_build_normalizes_generated_directory_modes(self) -> None:
+        previous_umask = os.umask(0o077)
+        try:
+            build.build_all(self.root)
+        finally:
+            os.umask(previous_umask)
+
+        output = self.root / "packages" / "plugins"
+        directories = [output, *(path for path in output.rglob("*") if path.is_dir())]
+        self.assertGreater(len(directories), 1)
+        for directory in directories:
+            with self.subTest(path=directory.relative_to(output)):
+                self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o755)
 
     def test_generation_failure_leaves_existing_output_unchanged(self) -> None:
         existing = self.root / "packages" / "plugins" / "keep.txt"

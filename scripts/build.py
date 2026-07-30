@@ -569,6 +569,9 @@ def _materialize(root: Path, tree: GeneratedTree) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
         destination.chmod(0o644)
+    root.chmod(0o755)
+    for directory in (path for path in root.rglob("*") if path.is_dir()):
+        directory.chmod(0o755)
 
 
 def build_all(repo_root: Path) -> None:
