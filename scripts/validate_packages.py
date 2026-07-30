@@ -22,6 +22,7 @@ from yaml.nodes import MappingNode
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GENERATED_ROOT = REPO_ROOT / "packages" / "plugins"
 PLUGIN_ROOT = REPO_ROOT / "plugins"
+COMMAND_TIMEOUT_SECONDS = 60
 
 
 class ValidationError(Exception):
@@ -159,7 +160,20 @@ def discover_packages(repo_root: Path = REPO_ROOT) -> list[Package]:
 
 def _run(command: list[str], cwd: Path) -> str | None:
     print(f"+ {shlex.join(command)}  (cwd={cwd})")
-    completed = subprocess.run(command, cwd=cwd, text=True, capture_output=True)
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            timeout=COMMAND_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return f"command timed out after {COMMAND_TIMEOUT_SECONDS} seconds: {shlex.join(command)}"
+    except FileNotFoundError:
+        return f"command executable not found: {command[0]}"
+    except OSError as error:
+        return f"command could not start: {shlex.join(command)}: {error}"
     if completed.stdout:
         print(completed.stdout, end="" if completed.stdout.endswith("\n") else "\n")
     if completed.stderr:

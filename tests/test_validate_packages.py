@@ -5,6 +5,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from subprocess import CompletedProcess, TimeoutExpired
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +64,39 @@ class FrontmatterTests(unittest.TestCase):
 
             with self.assertRaisesRegex(validate_packages.ValidationError, "invalid YAML"):
                 validate_packages.frontmatter(path)
+
+
+class RunTests(unittest.TestCase):
+    @mock.patch.object(validate_packages.subprocess, "run")
+    def test_passes_timeout_on_success(self, run: mock.Mock) -> None:
+        run.return_value = CompletedProcess(["apm", "audit"], 0, "output\n", "")
+
+        result = validate_packages._run(["apm", "audit"], Path("/package"))
+
+        self.assertIsNone(result)
+        run.assert_called_once_with(
+            ["apm", "audit"],
+            cwd=Path("/package"),
+            text=True,
+            capture_output=True,
+            timeout=validate_packages.COMMAND_TIMEOUT_SECONDS,
+        )
+
+    @mock.patch.object(validate_packages.subprocess, "run")
+    def test_returns_error_when_command_times_out(self, run: mock.Mock) -> None:
+        run.side_effect = TimeoutExpired(["apm", "audit"], 60)
+
+        result = validate_packages._run(["apm", "audit"], Path("/package"))
+
+        self.assertEqual(result, "command timed out after 60 seconds: apm audit")
+
+    @mock.patch.object(validate_packages.subprocess, "run")
+    def test_returns_error_when_executable_is_missing(self, run: mock.Mock) -> None:
+        run.side_effect = FileNotFoundError(2, "No such file or directory", "apm")
+
+        result = validate_packages._run(["apm", "audit"], Path("/package"))
+
+        self.assertEqual(result, "command executable not found: apm")
 
 
 if __name__ == "__main__":
