@@ -10,6 +10,7 @@ import re
 import shutil
 import stat
 import tempfile
+import uuid
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
@@ -588,7 +589,7 @@ def build_all(repo_root: Path) -> None:
     if backups:
         raise BuildError(f"{backups[0]}: leftover backup requires manual recovery")
     staging = Path(tempfile.mkdtemp(prefix=".plugins.stage-", dir=packages))
-    backup = packages / f".plugins.backup-{next(tempfile._get_candidate_names())}"
+    backup = packages / f".plugins.backup-{uuid.uuid4().hex}"
     moved_old = False
     try:
         _materialize(staging, tree)
