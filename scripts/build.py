@@ -532,6 +532,8 @@ def _scan_output(root: Path) -> dict[PurePosixPath, bytes | None]:
 
     def visit(directory: Path) -> None:
         for entry in sorted(directory.iterdir(), key=lambda item: item.name):
+            if entry.name == "__pycache__" or entry.suffix in {".pyc", ".pyo"}:
+                continue
             relative = PurePosixPath(entry.relative_to(root).as_posix())
             mode = entry.lstat().st_mode
             if stat.S_ISDIR(mode):

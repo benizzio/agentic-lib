@@ -288,6 +288,23 @@ class BuilderTestCase(unittest.TestCase):
         build.build_all(self.root)
         self.assertTrue(build.check_all(self.root).clean)
 
+    def test_check_ignores_python_cache_artifacts_but_reports_other_extras(self) -> None:
+        build.build_all(self.root)
+        output = self.root / "packages" / "plugins"
+        cache = output / "example" / "alpha" / "__pycache__"
+        cache.mkdir()
+        (cache / "helper.pyc").write_bytes(b"bytecode")
+        (output / "helper.pyc").write_bytes(b"bytecode")
+        (output / "helper.pyo").write_bytes(b"optimized bytecode")
+
+        self.assertTrue(build.check_all(self.root).clean)
+
+        (output / "extra.txt").write_text("extra\n", encoding="utf-8")
+        self.assertEqual(
+            build.check_all(self.root).extra,
+            (build.PurePosixPath("extra.txt"),),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
