@@ -8,7 +8,6 @@ frontmatter:
       - read
       - search
       - web
-      - execute
 
 tests:
   project_paths:

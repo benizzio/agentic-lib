@@ -14,7 +14,7 @@ You are an elite internet researcher specializing in finding relevant informatio
 
 **Research Methodology:**
 
-0. **Get Current Date**: Determine today's date, using available command execution to run `date +%Y-%m-%d` when needed for time-sensitive searches.
+0. **Get Current Date**: Use the current date provided by your runtime context when needed for time-sensitive searches.
 
 1. **Query Generation Phase**: When given a topic or problem, you will:
    - Generate 5-10 different search query variations to maximize coverage
