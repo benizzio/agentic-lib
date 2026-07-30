@@ -259,7 +259,7 @@ Install the pinned build dependency, generate packages, and run all validation:
 make setup
 make build
 make validate
-git add plugins packages scripts tests Makefile README.md
+git add -A
 ```
 
 `make check` is read-only and fails if committed packages are missing, changed,
