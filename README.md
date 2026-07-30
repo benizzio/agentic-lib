@@ -88,14 +88,13 @@ APM does not install this Python dependency automatically.
 ##### Use
 
 Run the workflow from the repository where the research output should be
-created. Send the following prompts to the active harness in sequence. Exact
-slash-command syntax varies by harness, so these examples invoke skills by
-name.
+created. Invoke the installed skills with the following slash commands in
+sequence.
 
 1. Generate the research outline:
 
-   ```text
-   Use the research skill to build an outline for AI Agent Demo 2025.
+   ```console
+   /research AI Agent Demo 2025
    ```
 
    This creates `<topic>/outline.yaml` with the items to investigate and
@@ -103,15 +102,15 @@ name.
 
 2. Optionally refine the outline before starting deep research:
 
-   ```text
-   Use the research-add-items skill to add more items to the current outline.
-   Use the research-add-fields skill to add more fields to the current field definitions.
+   ```console
+   /research-add-items
+   /research-add-fields
    ```
 
 3. Research every item in approved batches:
 
-   ```text
-   Use the research-deep skill to execute the current research outline.
+   ```console
+   /research-deep
    ```
 
    This writes one validated JSON result per item to the output directory
@@ -120,8 +119,8 @@ name.
 
 4. Generate the final report:
 
-   ```text
-   Use the research-report skill to generate a report from the current research results.
+   ```console
+   /research-report
    ```
 
    This creates `<topic>/generate_report.py` and `<topic>/report.md`.
