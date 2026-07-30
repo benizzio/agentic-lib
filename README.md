@@ -9,8 +9,6 @@ Portable agent artifacts packaged with
   `v0.26.0` installed and available on `PATH`.
 - Python 3.10 or newer and the dependencies in `requirements-build.txt` for
   maintaining the repository.
-- PyYAML for the Deep Research runtime validator. It is listed in the generated
-  package as `requirements.txt`; APM does not install Python dependencies.
 
 Verify the installation with `apm --version`.
 
@@ -57,9 +55,7 @@ variants so each agent has compatible frontmatter. See
 [`plugins/deep-research/UPSTREAM.md`](plugins/deep-research/UPSTREAM.md) and the
 preserved [`UPSTREAM_LICENSE`](plugins/deep-research/UPSTREAM_LICENSE).
 
-## Install
-
-### Install Deep Research
+##### Install
 
 The package path and `--target` must match. Install the OpenCode variant with:
 
@@ -87,7 +83,53 @@ skill will run:
 python3 -m pip install -r .agents/skills/research/requirements.txt
 ```
 
-### Install Root Skills
+APM does not install this Python dependency automatically.
+
+##### Use
+
+Run the workflow from the repository where the research output should be
+created. Send the following prompts to the active harness in sequence. Exact
+slash-command syntax varies by harness, so these examples invoke skills by
+name.
+
+1. Generate the research outline:
+
+   ```text
+   Use the research skill to build an outline for AI Agent Demo 2025.
+   ```
+
+   This creates `<topic>/outline.yaml` with the items to investigate and
+   `<topic>/fields.yaml` with the information to collect for each item.
+
+2. Optionally refine the outline before starting deep research:
+
+   ```text
+   Use the research-add-items skill to add more items to the current outline.
+   Use the research-add-fields skill to add more fields to the current field definitions.
+   ```
+
+3. Research every item in approved batches:
+
+   ```text
+   Use the research-deep skill to execute the current research outline.
+   ```
+
+   This writes one validated JSON result per item to the output directory
+   configured in `outline.yaml`. The workflow can resume by skipping completed
+   results.
+
+4. Generate the final report:
+
+   ```text
+   Use the research-report skill to generate a report from the current research results.
+   ```
+
+   This creates `<topic>/generate_report.py` and `<topic>/report.md`.
+
+## Install
+
+This section applies to the repository's root APM package. Plugin packages have
+their own installation instructions under [Plugin Packages](#plugin-packages).
 
 The `agent-skills` target deploys skills only. It does not install other
 artifact types from this package.
