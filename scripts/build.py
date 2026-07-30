@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import stat
+import sys
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -628,7 +629,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             build_all(repo_root)
     except BuildError as exc:
-        print(f"build error: {exc}", file=os.sys.stderr)
+        print(f"build error: {exc}", file=sys.stderr)
         return 2
     return 0
 
