@@ -13,7 +13,7 @@ Use this workflow when the user asks to add items to an existing research outlin
 ## Workflow
 
 ### Step 1: Auto-locate Outline
-Find a `*/outline.yaml` file in the current working directory and read it.
+Find a `*/outline.yaml` file in the current working directory, record its exact path, and read it. Require `topic_dir` to match `[a-z0-9]+(?:-[a-z0-9]+)*` and the exact parent directory name; stop with an error if it does not. Treat that parent as the canonical topic directory and do not reconstruct a path from `topic`.
 
 ### Step 2: Get Supplement Sources in Parallel
 When parallel interaction and delegation are available, do these concurrently; otherwise do them sequentially:
@@ -26,4 +26,4 @@ When parallel interaction and delegation are available, do these concurrently; o
 - After confirmation, atomically replace the exact outline file found in Step 1 with the candidate
 
 ## Output
-Updated `{topic}/outline.yaml` file (in-place modification)
+Updated the exact `outline.yaml` path discovered in Step 1 (in-place modification)

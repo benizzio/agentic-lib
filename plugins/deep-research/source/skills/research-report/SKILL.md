@@ -12,7 +12,7 @@ Use this workflow when the user asks to generate a report from deep research res
 ## Workflow
 
 ### Step 1: Locate Results Directory
-Find `*/outline.yaml` in the current working directory, then read the topic and output_dir configuration.
+Find `*/outline.yaml` in the current working directory, then read the topic, topic_dir, and output_dir configuration. Require `topic_dir` to match `[a-z0-9]+(?:-[a-z0-9]+)*` and the exact parent directory name; stop with an error if it does not. Treat that parent as the canonical project directory and do not reconstruct it from `topic`.
 
 ### Step 2: Scan Optional Summary Fields
 Read all JSON results and extract fields suitable for TOC display (numeric, short metrics), e.g.:
@@ -28,14 +28,14 @@ Ask the user and wait for a response:
 - Provide a dynamic options list based on actual fields in JSON
 
 ### Step 3: Generate Python Conversion Script
-Generate `generate_report.py` in the `{topic}/` directory. Script requirements:
+Generate `generate_report.py` in the canonical project directory discovered in Step 1. Script requirements:
 - Read all JSON from output_dir
 - Read fields.yaml to get field structure
 - Cover all field values from each JSON
 - Skip fields with values containing [uncertain]
 - Skip fields listed in uncertain array
 - Generate markdown report format: Table of contents (with anchor links + user-selected summary fields) + Detailed content (by field category)
-- Save to `{topic}/report.md`
+- Save to `{project_dir}/report.md`
 
 **TOC Format Requirements**:
 - Must include every item
@@ -85,8 +85,8 @@ Skip conditions:
 - Field value is None or empty string
 
 ### Step 4: Execute Script
-Use available command execution to run `python {topic}/generate_report.py`.
+Use available command execution to run `python {project_dir}/generate_report.py`.
 
 ## Output
-- `{topic}/generate_report.py` - Conversion script
-- `{topic}/report.md` - Summary report
+- `{project_dir}/generate_report.py` - Conversion script
+- `{project_dir}/report.md` - Summary report

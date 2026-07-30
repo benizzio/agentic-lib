@@ -115,9 +115,12 @@ Ask the user whether an existing field definition file should be included. If so
 ### Step 4: Generate Outline (Separate Files)
 Merge {step1_output}, {step2_output} and the user's existing fields, then generate two files:
 
+Derive one canonical `{topic_dir}` from the research topic: lowercase it, replace each maximal run of characters outside ASCII `[a-z0-9]` with `-`, and trim leading or trailing `-`. If the result is empty, use `research-topic`. Treat the result only as a single directory name, never as a path supplied by the topic; create it directly under the current working directory and use that same directory for all research files.
+
 **outline.yaml** (items + config):
 ```yaml
 topic: Research topic
+topic_dir: Canonical single-component directory name
 items: Research objects list
 execution:
   batch_size: Number of parallel agents (ask the user and wait for confirmation)
@@ -132,13 +135,14 @@ execution:
 - uncertain: Uncertain fields list (reserved field, auto-filled in deep phase)
 
 ### Step 5: Output and Confirm
-- Create directory: `./{topic_slug}/`
+- Create the canonical directory: `./{topic_dir}/`
 - Save: `outline.yaml` and `fields.yaml`
+- Persist the chosen directory name as `topic_dir` in `outline.yaml`
 - Show to user for confirmation
 
 ## Output Path
 ```
-{current_working_directory}/{topic_slug}/
+{current_working_directory}/{topic_dir}/
   ├── outline.yaml    # items list + execution config
   └── fields.yaml     # field definitions
 ```

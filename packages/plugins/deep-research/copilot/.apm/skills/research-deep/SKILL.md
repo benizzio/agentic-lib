@@ -13,7 +13,7 @@ Use this workflow when the user asks to execute deep research from an existing o
 ## Workflow
 
 ### Step 1: Auto-locate Outline
-Find a `*/outline.yaml` file in the current working directory, then read the items list and execution config, including items_per_agent.
+Find a `*/outline.yaml` file in the current working directory, then read the topic, topic_dir, items list, and execution config, including items_per_agent. Require `topic_dir` to match `[a-z0-9]+(?:-[a-z0-9]+)*` and the exact parent directory name; stop with an error if it does not. Treat that parent as the canonical project directory and do not reconstruct it from `topic`.
 
 ### Step 2: Resume Check
 - Check completed JSON files in output_dir
@@ -27,10 +27,11 @@ Find a `*/outline.yaml` file in the current working directory, then read the ite
 
 **Parameter Retrieval**:
 - `{topic}`: topic field from outline.yaml
+- `{project_dir}`: absolute path to the parent directory of the outline found in Step 1
 - `{item_name}`: item's name field
 - `{item_related_info}`: item's complete yaml content (name + category + description etc.)
 - `{output_dir}`: execution.output_dir from outline.yaml (default: ./results)
-- `{fields_path}`: absolute path to {topic}/fields.yaml
+- `{fields_path}`: absolute path to {project_dir}/fields.yaml
 - `{output_path}`: absolute path to {output_dir}/{item_name_slug}.json (slugify item_name: replace spaces with _, remove special chars)
 - `{validator_path}`: path to `validate_json.py`, located beside the installed `research/SKILL.md`; resolve it relative to that skill resource rather than assuming a harness-specific absolute path
 
