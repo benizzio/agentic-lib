@@ -63,6 +63,41 @@ class LoadFieldsYamlTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "No field definitions"):
                     self.load(fixture)
 
+    def test_non_mapping_roots_are_rejected(self):
+        for content in ("- name: field\n", "0\n"):
+            with self.subTest(content=content):
+                with tempfile.TemporaryDirectory() as directory:
+                    fields_path = Path(directory) / "fields.yaml"
+                    fields_path.write_text(content, encoding="utf-8")
+
+                    with self.assertRaisesRegex(
+                        ValueError, "fields.yaml root must be a mapping"
+                    ):
+                        validate_json.load_fields_yaml(fields_path)
+
+    def test_cli_reports_non_mapping_roots_without_traceback(self):
+        for content in ("- name: field\n", "0\n"):
+            with self.subTest(content=content):
+                with tempfile.TemporaryDirectory() as directory:
+                    fields_path = Path(directory) / "fields.yaml"
+                    fields_path.write_text(content, encoding="utf-8")
+                    completed = subprocess.run(
+                        [
+                            sys.executable,
+                            str(MODULE_PATH),
+                            "--fields",
+                            str(fields_path),
+                        ],
+                        text=True,
+                        capture_output=True,
+                    )
+
+                self.assertEqual(completed.returncode, 1)
+                self.assertIn(
+                    "[ERROR] fields.yaml root must be a mapping", completed.stdout
+                )
+                self.assertNotIn("Traceback", completed.stdout + completed.stderr)
+
 
 class ValidateJsonTests(unittest.TestCase):
     @classmethod

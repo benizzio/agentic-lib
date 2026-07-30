@@ -40,7 +40,12 @@ def _iter_field_defs(node, category="(uncategorized)"):
 def load_fields_yaml(fields_path):
     """Parse supported fields.yaml forms and return field requirement metadata."""
     with fields_path.open(encoding="utf-8") as file:
-        data = yaml.safe_load(file) or {}
+        data = yaml.safe_load(file)
+
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        raise ValueError(f"fields.yaml root must be a mapping: {fields_path}")
 
     definitions = []
 
