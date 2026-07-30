@@ -20,10 +20,9 @@ When parallel interaction and delegation are available, do these concurrently; o
 - **B. Ask if Web Search is needed**: Delegate to the web-search agent to search for more items when available; otherwise perform the same web research directly
 
 ### Step 3: Merge and Update
-- Append new items to outline.yaml
-- Display the merged items to the user for confirmation
-- Avoid duplicates
-- Save the updated outline
+- Build a deduplicated candidate by merging the new items into the outline read in Step 1, without modifying the file
+- Display the candidate to the user and wait for explicit confirmation
+- After confirmation, atomically replace the exact outline file found in Step 1 with the candidate
 
 ## Output
 Updated `{topic}/outline.yaml` file (in-place modification)
