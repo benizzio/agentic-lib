@@ -1,6 +1,6 @@
 # Generated; do not edit.
 name: deep-research-opencode
-version: "0.1.0"
+version: "0.1.1"
 description: Structured deep-research workflows and web-search agent for opencode.
 author: benizzio
 license: MIT

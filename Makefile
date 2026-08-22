@@ -1,10 +1,13 @@
-PYTHON ?= python3
+VENV ?= .venv
+BOOTSTRAP_PYTHON ?= python3
+PYTHON ?= $(VENV)/bin/python
 APM ?= apm
 
 .PHONY: setup build check test-build test-validator test-packages test-apm-install audit test validate
 
 setup:
-	$(PYTHON) -m pip install -r requirements-build.txt
+	$(BOOTSTRAP_PYTHON) -m venv "$(VENV)"
+	"$(VENV)/bin/python" -m pip install -r requirements-build.txt
 
 build:
 	$(PYTHON) scripts/build.py

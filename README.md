@@ -7,8 +7,8 @@ Portable agent artifacts packaged with
 
 - [Microsoft APM](https://microsoft.github.io/apm/getting-started/installation/)
   `v0.26.0` installed and available on `PATH`.
-- Python 3.10 or newer and the dependencies in `requirements-build.txt` for
-  maintaining the repository.
+- Python 3.10 or newer with the standard-library `venv` module for maintaining
+  the repository.
 
 Verify the installation with `apm --version`.
 
@@ -261,6 +261,12 @@ make build
 make validate
 git add -A
 ```
+
+`make setup` creates `.venv/` and installs `requirements-build.txt` there, so it
+works with externally managed system Python installations. Activating the
+environment is unnecessary: the remaining Make targets use `.venv/bin/python`
+automatically. Override `VENV`, `BOOTSTRAP_PYTHON`, or `PYTHON` when a custom
+environment or interpreter is required.
 
 `make check` is read-only and fails if committed packages are missing, changed,
 or stale. `make validate` additionally runs builder and validator unit tests,
