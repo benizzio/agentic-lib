@@ -22,7 +22,7 @@ from validate_packages import (
 )
 
 
-REQUIRED_APM_VERSION = "0.26.0"
+REQUIRED_APM_VERSION = "0.28.0"
 DEEP_RESEARCH_SKILLS = {
     "research",
     "research-add-fields",
@@ -274,7 +274,7 @@ def test_package(apm: str, package: Package, parent: Path) -> None:
         global_manifest_root = global_home / ".apm"
         if not global_manifest_root.is_dir():
             raise ValidationError(f"{global_manifest_root}: global APM state was not created")
-        # APM v0.26.0 has no audit --global mode. Expose its global state at the
+        # APM v0.28.0 has no audit --global mode. Expose its global state at the
         # isolated HOME root so CI audit resolves both the lock and deployments
         # from the same location.
         for name in ("apm.yml", "apm.lock.yaml"):
@@ -282,7 +282,7 @@ def test_package(apm: str, package: Package, parent: Path) -> None:
             if not state_file.is_file():
                 raise ValidationError(f"{state_file}: global APM state file is missing")
             (global_home / name).symlink_to(state_file.relative_to(global_home))
-        # Global state does not retain an install-scope flag, so v0.26.0 drift
+        # Global state does not retain an install-scope flag, so v0.28.0 drift
         # replay incorrectly replays into project target paths. File presence
         # and content are asserted below against the real global destinations.
         require_success([apm, "audit", "--ci", "--no-drift"], global_home, global_env)

@@ -6,7 +6,7 @@ Portable agent artifacts packaged with
 ## Prerequisites
 
 - [Microsoft APM](https://microsoft.github.io/apm/getting-started/installation/)
-  `v0.26.0` installed and available on `PATH`.
+  `v0.28.0` installed and available on `PATH`.
 - Python 3.10 or newer with the standard-library `venv` module for maintaining
   the repository.
 
@@ -270,7 +270,7 @@ environment or interpreter is required.
 
 `make check` is read-only and fails if committed packages are missing, changed,
 or stale. `make validate` additionally runs builder and validator unit tests,
-APM audits and dry packs, and real project/global installs with APM `v0.26.0`.
+APM audits and dry packs, and real project/global installs with APM `v0.28.0`.
 APM does not invoke this repository's builder during installation.
 
 To live-test a pushed feature branch, append `#<branch>` after the package
@@ -295,6 +295,18 @@ the install source when uninstalling:
 ```bash
 apm uninstall benizzio/agentic-lib/packages/plugins/deep-research/opencode
 apm uninstall --global benizzio/agentic-lib/packages/plugins/deep-research/opencode
+```
+
+**Known issue:** APM `v0.28.0` has a
+[mixed-target global uninstall bug](https://github.com/microsoft/apm/issues/2656).
+If `~/.apm/apm.yml` retains a target other than `opencode`, uninstall can remove
+the package's ownership records while leaving
+`~/.config/opencode/agents/web-search.md`. After confirming the package source
+locator is absent from both `~/.apm/apm.yml` and `~/.apm/apm.lock.yaml`, remove
+the orphan and restart OpenCode:
+
+```bash
+rm ~/.config/opencode/agents/web-search.md
 ```
 
 To add a plugin, create `plugins/<name>/plugin.yml`, canonical artifacts under

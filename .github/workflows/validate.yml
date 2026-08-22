@@ -27,14 +27,14 @@ jobs:
           python-version: "3.13"
           cache: pip
 
-      - name: Install APM v0.26.0
+      - name: Install APM v0.28.0
         shell: bash
         run: |
           curl --fail --location --silent --show-error \
             --output apm-linux-x86_64.tar.gz \
-            https://github.com/microsoft/apm/releases/download/v0.26.0/apm-linux-x86_64.tar.gz
+            https://github.com/microsoft/apm/releases/download/v0.28.0/apm-linux-x86_64.tar.gz
           printf '%s  %s\n' \
-            '3afba455c5283852ba4c392f668be7c27b65bc4a0fa60a8b53a4626c52628431' \
+            '7edab3baba96658a20120fc8f3012e3223da7924937a8cbf169bf9805853b8d7' \
             'apm-linux-x86_64.tar.gz' | sha256sum --check --strict
           sudo mkdir --parents /opt/apm
           sudo tar --extract --gzip --strip-components 1 \
