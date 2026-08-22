@@ -21,6 +21,9 @@ from yaml.nodes import MappingNode
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMMAND_TIMEOUT_SECONDS = 60
+DEEP_RESEARCH_OPENCODE_EDIT_RULES = (("*", "deny"), ("*.json", "allow"))
+DEEP_RESEARCH_OPENCODE_BASH_RULES = (("*", "deny"), ("date *", "allow"))
+DEEP_RESEARCH_COPILOT_TOOLS = ["read", "edit", "search", "web"]
 
 
 class ValidationError(Exception):
@@ -181,6 +184,37 @@ def _run(command: list[str], cwd: Path) -> str | None:
     return None
 
 
+def agent_capability_errors(
+    package: Package, agent: Path, metadata: dict[str, Any]
+) -> list[str]:
+    if package.plugin != "deep-research" or metadata.get("name") != "web-search-agent":
+        return []
+
+    if package.target == "opencode":
+        permission = metadata.get("permission")
+        if not isinstance(permission, dict):
+            return []
+        edit = permission.get("edit")
+        bash = permission.get("bash")
+        errors = []
+        if not isinstance(edit, dict) or tuple(edit.items()) != DEEP_RESEARCH_OPENCODE_EDIT_RULES:
+            errors.append(
+                f"{agent}: OpenCode web-search agent must deny edits by default and allow *.json"
+            )
+        if not isinstance(bash, dict) or tuple(bash.items()) != DEEP_RESEARCH_OPENCODE_BASH_RULES:
+            errors.append(
+                f"{agent}: OpenCode web-search agent must deny Bash except for date"
+            )
+        return errors
+
+    if package.target == "copilot" and metadata.get("tools") != DEEP_RESEARCH_COPILOT_TOOLS:
+        return [
+            f"{agent}: Copilot web-search agent tools must be "
+            f"{DEEP_RESEARCH_COPILOT_TOOLS!r}"
+        ]
+    return []
+
+
 def _content_checks(package: Package, repo_root: Path) -> list[str]:
     errors: list[str] = []
     apm_root = package.root / ".apm"
@@ -258,6 +292,7 @@ def _content_checks(package: Package, repo_root: Path) -> list[str]:
             forbidden = sorted({"permission", "mode", "temperature"} & metadata.keys())
             if forbidden:
                 errors.append(f"{agent}: Copilot agent contains OpenCode fields: {', '.join(forbidden)}")
+        errors.extend(agent_capability_errors(package, agent, metadata))
     return errors
 
 

@@ -121,6 +121,75 @@ class ContentChecksTests(unittest.TestCase):
                 errors,
             )
 
+    def test_requires_ordered_json_edit_rules_for_deep_research_opencode(self) -> None:
+        package = validate_packages.Package(
+            plugin="deep-research",
+            target="opencode",
+            root=Path("/package"),
+            config_path=Path("/target.yml"),
+            config={},
+        )
+        agent = Path("/package/.apm/agents/web-search.agent.md")
+        valid = {
+            "name": "web-search-agent",
+            "permission": {
+                "edit": {"*": "deny", "*.json": "allow"},
+                "bash": {"*": "deny", "date *": "allow"},
+            },
+        }
+
+        self.assertEqual(
+            validate_packages.agent_capability_errors(package, agent, valid), []
+        )
+
+        invalid = {
+            **valid,
+            "permission": {
+                **valid["permission"],
+                "edit": {"*.json": "allow", "*": "deny"},
+            },
+        }
+        self.assertIn(
+            f"{agent}: OpenCode web-search agent must deny edits by default and allow *.json",
+            validate_packages.agent_capability_errors(package, agent, invalid),
+        )
+
+    def test_requires_edit_without_execute_for_deep_research_copilot(self) -> None:
+        package = validate_packages.Package(
+            plugin="deep-research",
+            target="copilot",
+            root=Path("/package"),
+            config_path=Path("/target.yml"),
+            config={},
+        )
+        agent = Path("/package/.apm/agents/web-search.agent.md")
+
+        self.assertEqual(
+            validate_packages.agent_capability_errors(
+                package,
+                agent,
+                {
+                    "name": "web-search-agent",
+                    "tools": ["read", "edit", "search", "web"],
+                },
+            ),
+            [],
+        )
+        self.assertEqual(
+            validate_packages.agent_capability_errors(
+                package,
+                agent,
+                {
+                    "name": "web-search-agent",
+                    "tools": ["read", "edit", "search", "web", "execute"],
+                },
+            ),
+            [
+                f"{agent}: Copilot web-search agent tools must be "
+                "['read', 'edit', 'search', 'web']"
+            ],
+        )
+
 
 class ValidateTests(unittest.TestCase):
     @mock.patch.object(validate_packages, "_run", return_value=None)

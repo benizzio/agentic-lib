@@ -24,7 +24,7 @@ Before checking existing results or starting any worker, build one authoritative
 5. Re-check all candidate filenames after each disambiguation pass, including collisions between a disambiguated filename and another base filename. For each still-colliding disambiguated item, extend its digest prefix by one character and check again. Stop with an error rather than execute if distinct names still collide after the full digest is used.
 6. Store the resulting `{item_name}` to absolute `{output_path}` mapping and use it unchanged for both resume checks and worker prompts. Never recompute a slug in a worker. Verify all mapped paths are direct children of `{output_dir}` and are unique before starting execution.
 
-Check only the mapped output path for each item and skip that item when its completed JSON file already exists. This mapping prevents two items, such as `C` and `C++`, from reading or writing the same result file.
+Resolve `{validator_path}` before the resume check. Ensure `{output_dir}` exists before starting workers. For each mapped output path that already exists, the orchestrating agent must run the validation command from Step 4 and skip the item only when validation passes. Keep invalid existing files mapped to their original items and schedule them for correction. This mapping prevents two items, such as `C` and `C++`, from reading or writing the same result file.
 
 ### Step 3: Batch Execution
 - Process items in batches according to batch_size and obtain user approval before starting each next batch
@@ -40,7 +40,7 @@ Check only the mapped output path for each item and skip that item when its comp
 - `{output_dir}`: resolved absolute output directory; resolve a relative execution.output_dir from `{project_dir}` (default: `{project_dir}/results`)
 - `{fields_path}`: absolute path to {project_dir}/fields.yaml
 - `{output_path}`: absolute path assigned to the exact item name by the authoritative mapping in Step 2
-- `{validator_path}`: path to `validate_json.py`, located beside the installed `research/SKILL.md`; resolve it relative to that skill resource rather than assuming a harness-specific absolute path
+- `{validator_path}`: path to `validate_json.py`, located beside the installed `research/SKILL.md`; the orchestrating agent resolves it relative to that skill resource rather than assuming a harness-specific absolute path
 
 **Hard Constraint**: The following prompt must be strictly reproduced, only replacing variables in {xxx}, do not modify structure or wording.
 
@@ -61,10 +61,8 @@ Read {fields_path} to get all field definitions
 ## Output Path
 {output_path}
 
-## Validation
-After completing JSON output, run validation script to ensure complete field coverage:
-python3 {validator_path} -f {fields_path} -j {output_path}
-Task is complete only after validation passes.
+## Completion
+Write the completed JSON to the output path using file-editing tools. Do not use shell commands to write or validate it. Return only a concise completion status and the output path.
 """
 ```
 
@@ -87,16 +85,18 @@ Read {project_dir}/fields.yaml to get all field definitions
 ## Output Path
 {project_dir}/results/GitHub_Copilot.json
 
-## Validation
-After completing JSON output, run validation script to ensure complete field coverage:
-python3 {validator_path} -f {project_dir}/fields.yaml -j {project_dir}/results/GitHub_Copilot.json
-Task is complete only after validation passes.
+## Completion
+Write the completed JSON to the output path using file-editing tools. Do not use shell commands to write or validate it. Return only a concise completion status and the output path.
 ```
 
-### Step 4: Wait and Monitor
+### Step 4: Wait, Validate, and Monitor
 - Wait for the current batch to complete
+- Verify that every worker created its assigned output file
+- The orchestrating agent, never a web-search worker, must validate each output with `python3 "{validator_path}" -f "{fields_path}" -j "{output_path}"`
+- If validation fails, send the validator errors back to the same worker when the harness can resume it and ask it to correct only the assigned output file with file-editing tools. Otherwise, correct the file directly with the same constraints or record the item as failed. Re-run validation after every correction
+- Mark an item complete only after validation passes
 - Display progress
-- Ask for approval before launching the next batch
+- Ask for approval before launching the next batch only after every item in the current batch has passed validation or been recorded as failed
 
 ### Step 5: Summary Report
 After all complete, output:
@@ -106,5 +106,6 @@ After all complete, output:
 
 ## Execution Characteristics
 - Parallel or background execution: Use when supported, but not required
-- Worker output: Results are written to the explicit output file
+- Worker output: Results are written to the explicit output file; workers return only status and path
+- Validation: Performed by the orchestrating agent after each worker completes
 - Resume support: Yes

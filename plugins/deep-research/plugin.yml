@@ -1,7 +1,7 @@
 schema_version: 1
 
 package:
-  version: 0.1.0
+  version: 0.1.1
   description: Structured deep-research workflows and web-search agent.
   author: benizzio
   license: MIT

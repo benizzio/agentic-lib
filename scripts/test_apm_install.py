@@ -12,7 +12,14 @@ import sys
 import tempfile
 from pathlib import Path
 
-from validate_packages import Package, REPO_ROOT, ValidationError, discover_packages, frontmatter
+from validate_packages import (
+    Package,
+    REPO_ROOT,
+    ValidationError,
+    agent_capability_errors,
+    discover_packages,
+    frontmatter,
+)
 
 
 REQUIRED_APM_VERSION = "0.26.0"
@@ -122,6 +129,9 @@ def assert_frontmatter(package: Package, agent: Path) -> None:
             raise ValidationError(f"{agent}: installed Copilot tools are not a string list")
         if {"mode", "permission", "temperature"} & metadata.keys():
             raise ValidationError(f"{agent}: installed Copilot agent contains OpenCode fields")
+    capability_errors = agent_capability_errors(package, agent, metadata)
+    if capability_errors:
+        raise ValidationError("; ".join(capability_errors))
 
 
 def assert_install(package: Package, root: Path, scope: str) -> None:

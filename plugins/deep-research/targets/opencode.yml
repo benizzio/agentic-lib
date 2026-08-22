@@ -6,7 +6,9 @@ frontmatter:
   source/agents/web-search.md:
     mode: subagent
     permission:
-      edit: deny
+      edit:
+        "*": deny
+        "*.json": allow
       websearch: allow
       webfetch: allow
       question: allow
