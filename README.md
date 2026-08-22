@@ -288,12 +288,13 @@ apm install \
 ```
 
 Add `--skill research-add-items` to select one skill from the package. Add
-`--global` to install at user scope. Uninstall by the canonical package name
-from its generated `apm.yml`; the Git ref is not part of the uninstall identity:
+`--global` to install at user scope. APM uninstalls Git packages by their source
+locator, not the package name in the generated `apm.yml`. Omit the Git ref from
+the install source when uninstalling:
 
 ```bash
-apm uninstall deep-research-opencode
-apm uninstall --global deep-research-opencode
+apm uninstall benizzio/agentic-lib/packages/plugins/deep-research/opencode
+apm uninstall --global benizzio/agentic-lib/packages/plugins/deep-research/opencode
 ```
 
 To add a plugin, create `plugins/<name>/plugin.yml`, canonical artifacts under
