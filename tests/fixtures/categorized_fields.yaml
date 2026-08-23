@@ -1,0 +1,6 @@
+fields:
+  Basic Details:
+    - name: name
+    - name: website
+  Metrics:
+    - name: score

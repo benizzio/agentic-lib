@@ -1,0 +1,11 @@
+field_categories:
+  - category: Identity Details
+    fields:
+      - name: name
+        required: true
+      - name: founded
+        required: false
+  - category: Measured Results
+    fields:
+      - name: score
+        required: true

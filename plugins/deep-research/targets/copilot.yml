@@ -1,0 +1,19 @@
+schema_version: 1
+target: copilot
+package_name: deep-research-copilot
+
+frontmatter:
+  source/agents/web-search.md:
+    tools:
+      - read
+      - edit
+      - search
+      - web
+
+tests:
+  project_paths:
+    - .github/agents/web-search.agent.md
+    - .agents/skills/research/SKILL.md
+  global_paths:
+    - .copilot/agents/web-search.agent.md
+    - .agents/skills/research/SKILL.md
