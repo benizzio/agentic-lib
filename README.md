@@ -64,7 +64,8 @@ preserved [`UPSTREAM_LICENSE`](plugins/deep-research/UPSTREAM_LICENSE).
 
 ##### Install
 
-The package path and `--target` must match. Install the OpenCode variant with:
+For a project installation, use each package with its matching target. Install
+the OpenCode variant with:
 
 ```bash
 apm install benizzio/agentic-lib/packages/plugins/deep-research/opencode --target opencode
@@ -76,8 +77,20 @@ Install the GitHub Copilot CLI variant with:
 apm install benizzio/agentic-lib/packages/plugins/deep-research/copilot --target copilot
 ```
 
-Add `--global` for a user-scope installation. OpenCode supplies web search when
-using its provider. With another provider, enable Exa when starting OpenCode:
+Add `--global` to the Copilot command for a user-scope installation. For a
+global OpenCode installation with APM `v0.29.1`, install the shared skills and
+OpenCode agent separately:
+
+```bash
+apm install benizzio/agentic-lib/packages/plugins/deep-research/opencode \
+  --target agent-skills --global
+apm install \
+  benizzio/agentic-lib/packages/plugins/deep-research/opencode/.apm/agents/web-search.agent.md \
+  --target opencode --global
+```
+
+OpenCode supplies web search when using its provider. With another provider,
+enable Exa when starting OpenCode:
 
 ```bash
 OPENCODE_ENABLE_EXA=1 opencode
@@ -93,7 +106,7 @@ python3 -m pip install -r .agents/skills/research/requirements.txt
 For a global OpenCode installation with APM `v0.29.1`:
 
 ```bash
-python3 -m pip install -r ~/.config/opencode/skills/research/requirements.txt
+python3 -m pip install -r ~/.agents/skills/research/requirements.txt
 ```
 
 APM does not install this Python dependency automatically.
@@ -148,8 +161,17 @@ artifact types from this package.
 
 ### Install Global Instructions For OpenCode
 
-If `~/.apm/apm.yml` already exists, add `opencode` to its `targets:` list while
-retaining every target already declared. For example:
+Install the complete root package's skills at user scope first:
+
+```bash
+apm install benizzio/agentic-lib --target agent-skills --global
+```
+
+For a fresh user-scope installation, this creates `~/.apm/apm.yml` with
+`agent-skills` declared. If the manifest already exists, the explicit install
+target is one-shot and does not update its `targets:` list. After installation,
+ensure that list retains every existing target and includes both `agent-skills`
+and `opencode`. For example:
 
 ```yaml
 targets:
@@ -157,26 +179,22 @@ targets:
   - opencode
 ```
 
-The `--target opencode` install option is one-shot and does not update an
-existing global manifest. `apm compile --global` reads the manifest rather than
-the preceding install command, so it produces no OpenCode context file unless
-`opencode` is declared there. A fresh global installation creates the manifest
-with the requested target automatically.
-
-Install the complete root package at user scope, then explicitly compile its
-instructions into OpenCode's global context file:
+`apm compile --global` reads the manifest rather than the preceding install
+command, so it produces no OpenCode context file unless `opencode` is declared
+there. After updating the manifest, explicitly compile the instructions into
+OpenCode's global context file:
 
 ```bash
-apm install benizzio/agentic-lib --target opencode --global
 apm compile --global --dry-run
 apm compile --global
 ```
 
-The first command stages the package under `~/.apm/`. The second previews the
-compilation without writing files, and the third writes the APM-managed
-`~/.config/opencode/AGENTS.md`. APM `v0.29.1` reads the global
-manifest's `targets:` declaration, so an OpenCode-only manifest does not create
-context files for unrelated harnesses.
+The install command stages the package under `~/.apm/` and deploys its skills
+under `~/.agents/skills/`. The dry run previews compilation without writing
+files, and the final command writes the APM-managed
+`~/.config/opencode/AGENTS.md`. APM `v0.29.1` reads the global manifest's
+`targets:` declaration, so an OpenCode-only manifest does not create context
+files for unrelated harnesses.
 
 To install only the global instruction without this package's skills, use its
 source file as a virtual package:
@@ -356,6 +374,8 @@ the install source when uninstalling:
 ```bash
 apm uninstall benizzio/agentic-lib/packages/plugins/deep-research/opencode
 apm uninstall --global benizzio/agentic-lib/packages/plugins/deep-research/opencode
+apm uninstall --global \
+  benizzio/agentic-lib/packages/plugins/deep-research/opencode/.apm/agents/web-search.agent.md
 ```
 
 To add a plugin, create `plugins/<name>/plugin.yml`, canonical artifacts under

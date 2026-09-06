@@ -51,7 +51,7 @@ TARGET_LAYOUTS = {
         "other_project": Path(".github/agents"),
         "other_global": Path(".copilot/agents"),
         "project_skills": Path(".agents/skills"),
-        "global_skills": Path(".config/opencode/skills"),
+        "global_skills": Path(".agents/skills"),
         "rename_agent": True,
     },
     "copilot": {
@@ -200,6 +200,10 @@ def assert_install(package: Package, root: Path, scope: str) -> None:
         ):
             if not required.is_file():
                 raise ValidationError(f"{required}: required Deep Research resource is missing")
+        if package.target == "opencode" and scope == "global":
+            legacy_skills = root / ".config" / "opencode" / "skills"
+            if legacy_skills.exists():
+                raise ValidationError(f"{legacy_skills}: legacy OpenCode skill directory was created")
 
 
 def run_validator_regressions(skills_root: Path, cwd: Path, env: dict[str, str]) -> None:
@@ -281,11 +285,46 @@ def test_package(apm: str, package: Package, parent: Path) -> None:
 
         global_env = os.environ.copy()
         global_env["HOME"] = str(global_home)
-        require_success(
-            [apm, "install", package_path, "--target", package.target, "--global"],
-            global_work,
-            global_env,
-        )
+        if package.target == "opencode":
+            agent_package = temp / "opencode-agent-package"
+            agent_source = package.root / ".apm" / "agents" / "web-search.agent.md"
+            agent_destination = agent_package / ".apm" / "agents" / agent_source.name
+            agent_destination.parent.mkdir(parents=True)
+            shutil.copy2(agent_source, agent_destination)
+            (agent_package / "apm.yml").write_text(
+                "name: deep-research-opencode-agent\n"
+                "version: 0.0.0\n"
+                "dependencies:\n"
+                "  apm: []\n"
+                "  mcp: []\n"
+                "includes:\n"
+                "  - .apm/agents/\n"
+                "scripts: {}\n",
+                encoding="utf-8",
+            )
+            global_commands = (
+                [apm, "install", package_path, "--target", "agent-skills", "--global"],
+                [apm, "install", str(agent_package), "--target", "opencode", "--global"],
+            )
+        else:
+            global_commands = (
+                [apm, "install", package_path, "--target", package.target, "--global"],
+            )
+        for command in global_commands:
+            require_success(command, global_work, global_env)
+        if package.target == "opencode":
+            deployed_before = {
+                path: (global_home / path).read_bytes()
+                for path in expected_paths(package, "global")
+            }
+            for command in global_commands:
+                require_success(command, global_work, global_env)
+            deployed_after = {
+                path: (global_home / path).read_bytes()
+                for path in expected_paths(package, "global")
+            }
+            if deployed_after != deployed_before:
+                raise ValidationError("OpenCode global install is not idempotent")
         global_manifest_root = global_home / ".apm"
         if not global_manifest_root.is_dir():
             raise ValidationError(f"{global_manifest_root}: global APM state was not created")
@@ -354,7 +393,7 @@ def test_root_global_instruction(apm: str, parent: Path) -> None:
         env["HOME"] = str(home)
 
         require_success(
-            [apm, "install", str(package), "--target", "opencode", "--global"],
+            [apm, "install", str(package), "--target", "agent-skills", "--global"],
             work,
             env,
         )
@@ -365,6 +404,22 @@ def test_root_global_instruction(apm: str, parent: Path) -> None:
                 f"{global_manifest}: explicit install unexpectedly replaced existing targets; "
                 f"found {declared_targets!r}"
             )
+
+        skills_root = home / ".agents" / "skills"
+        missing_skills = sorted(
+            path.relative_to(package / ".apm" / "skills")
+            for path in (package / ".apm" / "skills").glob("**/*")
+            if path.is_file()
+            and not (skills_root / path.relative_to(package / ".apm" / "skills")).is_file()
+        )
+        if missing_skills:
+            raise ValidationError(
+                "root global install is missing shared skill files: "
+                + ", ".join(str(path) for path in missing_skills)
+            )
+        legacy_skills = home / ".config" / "opencode" / "skills"
+        if legacy_skills.exists():
+            raise ValidationError(f"{legacy_skills}: legacy OpenCode skill directory was created")
 
         output = home / ".config" / "opencode" / "AGENTS.md"
         require_success([apm, "compile", "--global", "--dry-run"], work, env)

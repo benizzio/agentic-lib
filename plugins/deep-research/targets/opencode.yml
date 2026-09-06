@@ -25,4 +25,4 @@ tests:
     - .agents/skills/research/SKILL.md
   global_paths:
     - .config/opencode/agents/web-search.md
-    - .config/opencode/skills/research/SKILL.md
+    - .agents/skills/research/SKILL.md
