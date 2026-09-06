@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise generated packages through real APM project and global installs."""
+"""Exercise APM packages through real project and global installs."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import argparse
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,10 +20,14 @@ from validate_packages import (
     agent_capability_errors,
     discover_packages,
     frontmatter,
+    load_yaml_mapping,
 )
 
 
-REQUIRED_APM_VERSION = "0.28.0"
+REQUIRED_APM_VERSION = "0.29.1"
+GLOBAL_INSTRUCTION = (
+    REPO_ROOT / ".apm" / "instructions" / "global-AGENTS.instructions.md"
+)
 DEEP_RESEARCH_SKILLS = {
     "research",
     "research-add-fields",
@@ -43,6 +48,8 @@ TARGET_LAYOUTS = {
         "global_agents": Path(".config/opencode/agents"),
         "other_project": Path(".github/agents"),
         "other_global": Path(".copilot/agents"),
+        "project_skills": Path(".agents/skills"),
+        "global_skills": Path(".config/opencode/skills"),
         "rename_agent": True,
     },
     "copilot": {
@@ -50,6 +57,8 @@ TARGET_LAYOUTS = {
         "global_agents": Path(".copilot/agents"),
         "other_project": Path(".opencode/agents"),
         "other_global": Path(".config/opencode/agents"),
+        "project_skills": Path(".agents/skills"),
+        "global_skills": Path(".agents/skills"),
         "rename_agent": False,
     },
 }
@@ -98,15 +107,16 @@ def configured_paths(package: Package, scope: str) -> list[Path]:
 
 def expected_paths(package: Package, scope: str) -> set[Path]:
     configured = set(configured_paths(package, scope))
-    skill_files = sorted((package.root / ".apm" / "skills").glob("**/*"))
-    configured.update(
-        Path(".agents/skills") / path.relative_to(package.root / ".apm" / "skills")
-        for path in skill_files
-        if path.is_file()
-    )
     layout = TARGET_LAYOUTS.get(package.target)
     if layout is None:
         raise ValidationError(f"unsupported APM install target for path assertions: {package.target}")
+    skill_root = layout[f"{scope}_skills"]
+    skill_files = sorted((package.root / ".apm" / "skills").glob("**/*"))
+    configured.update(
+        skill_root / path.relative_to(package.root / ".apm" / "skills")
+        for path in skill_files
+        if path.is_file()
+    )
     agent_root = layout[f"{scope}_agents"]
     for source in sorted((package.root / ".apm" / "agents").glob("*.md")):
         name = source.name
@@ -164,7 +174,7 @@ def assert_install(package: Package, root: Path, scope: str) -> None:
     if standalone_modules & {path.name for path in agents}:
         raise ValidationError(f"{agent_root}: modules were installed as standalone agents")
     if package.plugin == "deep-research":
-        skills_root = root / ".agents" / "skills"
+        skills_root = root / layout[f"{scope}_skills"]
         installed_skills = {
             path.parent.name for path in skills_root.glob("*/SKILL.md")
         }
@@ -190,10 +200,12 @@ def assert_install(package: Package, root: Path, scope: str) -> None:
                 raise ValidationError(f"{required}: required Deep Research resource is missing")
 
 
-def run_validator_regressions(root: Path, cwd: Path, env: dict[str, str]) -> None:
-    validators = sorted((root / ".agents" / "skills").glob("*/validate_json.py"))
-    if not validators or any(not (validator.parent / "requirements.txt").is_file() for validator in validators):
-        raise ValidationError(f"{root}: installed validator or requirements.txt is missing")
+def run_validator_regressions(skills_root: Path, cwd: Path, env: dict[str, str]) -> None:
+    validators = sorted(skills_root.glob("*/validate_json.py"))
+    if not validators or any(
+        not (validator.parent / "requirements.txt").is_file() for validator in validators
+    ):
+        raise ValidationError(f"{skills_root}: installed validator or requirements.txt is missing")
     fixture_dir = cwd / "validator-fixtures"
     fixture_dir.mkdir()
     fields = fixture_dir / "fields.yaml"
@@ -262,7 +274,8 @@ def test_package(apm: str, package: Package, parent: Path) -> None:
         )
         require_success([apm, "audit", "--ci"], project, project_env)
         assert_install(package, project, "project")
-        run_validator_regressions(project, project, project_env)
+        project_skills = project / TARGET_LAYOUTS[package.target]["project_skills"]
+        run_validator_regressions(project_skills, project, project_env)
 
         global_env = os.environ.copy()
         global_env["HOME"] = str(global_home)
@@ -274,20 +287,88 @@ def test_package(apm: str, package: Package, parent: Path) -> None:
         global_manifest_root = global_home / ".apm"
         if not global_manifest_root.is_dir():
             raise ValidationError(f"{global_manifest_root}: global APM state was not created")
-        # APM v0.28.0 has no audit --global mode. Expose its global state at the
-        # isolated HOME root so CI audit resolves both the lock and deployments
-        # from the same location.
         for name in ("apm.yml", "apm.lock.yaml"):
             state_file = global_manifest_root / name
             if not state_file.is_file():
                 raise ValidationError(f"{state_file}: global APM state file is missing")
-            (global_home / name).symlink_to(state_file.relative_to(global_home))
-        # Global state does not retain an install-scope flag, so v0.28.0 drift
-        # replay incorrectly replays into project target paths. File presence
-        # and content are asserted below against the real global destinations.
-        require_success([apm, "audit", "--ci", "--no-drift"], global_home, global_env)
+        # APM has no audit --global mode. Verify its user-scope state and actual
+        # deployment destinations directly instead of project-auditing symlinks.
         assert_install(package, global_home, "global")
-        run_validator_regressions(global_home, global_work, global_env)
+        global_skills = global_home / TARGET_LAYOUTS[package.target]["global_skills"]
+        run_validator_regressions(global_skills, global_work, global_env)
+
+
+def global_instruction_body() -> str:
+    text = GLOBAL_INSTRUCTION.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        raise ValidationError(f"{GLOBAL_INSTRUCTION}: missing YAML frontmatter")
+    try:
+        end = next(index for index in range(1, len(lines)) if lines[index].strip() == "---")
+    except StopIteration as error:
+        raise ValidationError(f"{GLOBAL_INSTRUCTION}: unterminated YAML frontmatter") from error
+    body = "\n".join(lines[end + 1 :]).strip()
+    if not body:
+        raise ValidationError(f"{GLOBAL_INSTRUCTION}: instruction body is empty")
+    return body
+
+
+def test_root_global_instruction(apm: str, parent: Path) -> None:
+    _, metadata = frontmatter(GLOBAL_INSTRUCTION)
+    if not isinstance(metadata.get("description"), str) or not metadata["description"].strip():
+        raise ValidationError(f"{GLOBAL_INSTRUCTION}: description must be a non-empty string")
+    if "applyTo" in metadata:
+        raise ValidationError(f"{GLOBAL_INSTRUCTION}: global instruction must not declare applyTo")
+
+    with tempfile.TemporaryDirectory(prefix="apm-root-opencode-global-", dir=parent) as raw:
+        temp = Path(raw)
+        work = temp / "consumer"
+        home = temp / "home"
+        package = temp / "package"
+        work.mkdir()
+        home.mkdir()
+        package.mkdir()
+        shutil.copy2(REPO_ROOT / "apm.yml", package / "apm.yml")
+        shutil.copytree(
+            REPO_ROOT / ".apm" / "instructions", package / ".apm" / "instructions"
+        )
+        shutil.copytree(REPO_ROOT / ".apm" / "skills", package / ".apm" / "skills")
+        env = os.environ.copy()
+        env["HOME"] = str(home)
+
+        require_success(
+            [apm, "install", str(package), "--target", "opencode", "--global"],
+            work,
+            env,
+        )
+        manifest = load_yaml_mapping(home / ".apm" / "apm.yml")
+        declared_targets = manifest.get("targets", manifest.get("target"))
+        if declared_targets != ["opencode"]:
+            raise ValidationError(
+                f"{home / '.apm' / 'apm.yml'}: expected targets: [opencode], "
+                f"found {declared_targets!r}"
+            )
+
+        require_success([apm, "compile", "--global", "--dry-run"], work, env)
+        output = home / ".config" / "opencode" / "AGENTS.md"
+        if output.exists():
+            raise ValidationError(f"{output}: global compile dry-run wrote an output file")
+        if (home / ".claude" / "CLAUDE.md").exists():
+            raise ValidationError("OpenCode-only global compile created a Claude context file")
+
+        require_success([apm, "compile", "--global"], work, env)
+        if not output.is_file():
+            raise ValidationError(f"{output}: compiled OpenCode global instructions are missing")
+        compiled = output.read_text(encoding="utf-8")
+        if "Generated by APM CLI" not in compiled or global_instruction_body() not in compiled:
+            raise ValidationError(f"{output}: compiled content does not contain the packaged instruction")
+        if (home / ".claude" / "CLAUDE.md").exists():
+            raise ValidationError("OpenCode-only global compile created a Claude context file")
+
+        before = output.read_bytes()
+        require_success([apm, "compile", "--global"], work, env)
+        if output.read_bytes() != before:
+            raise ValidationError(f"{output}: repeated global compilation was not idempotent")
 
 
 def main() -> int:
@@ -301,10 +382,12 @@ def main() -> int:
         for package in packages:
             print(f"Testing APM installs for {package.plugin}/{package.target}")
             test_package(args.apm, package, parent)
+        print("Testing root package OpenCode global instructions")
+        test_root_global_instruction(args.apm, parent)
     except (OSError, ValidationError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return 1
-    print(f"Tested project and global installs for {len(packages)} package(s).")
+    print(f"Tested project and global installs for {len(packages)} generated package(s) and root.")
     return 0
 
 
