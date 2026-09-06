@@ -149,11 +149,27 @@ artifact types from this package.
 
 ### Install Global Instructions For OpenCode
 
+If `~/.apm/apm.yml` already exists, add `opencode` to its `targets:` list while
+retaining every target already declared. For example:
+
+```yaml
+targets:
+  - agent-skills
+  - opencode
+```
+
+The `--target opencode` install option is one-shot and does not update an
+existing global manifest. `apm compile --global` reads the manifest rather than
+the preceding install command, so it produces no OpenCode context file unless
+`opencode` is declared there. A fresh global installation creates the manifest
+with the requested target automatically.
+
 Install the complete root package at user scope, then explicitly compile its
 instructions into OpenCode's global context file:
 
 ```bash
 apm install benizzio/agentic-lib --target opencode --global
+apm compile --global --dry-run
 apm compile --global
 ```
 
@@ -170,15 +186,13 @@ apm install \
   benizzio/agentic-lib/.apm/instructions/global-AGENTS.instructions.md \
   --target opencode \
   --global
+apm compile --global --dry-run
 apm compile --global
 ```
 
-If `~/.apm/apm.yml` already exists, ensure its `targets:` list contains
-`opencode`; an explicit install target does not replace an existing manifest
-declaration. APM does not overwrite a hand-authored
-`~/.config/opencode/AGENTS.md`. Incorporate its required content into the
-packaged instruction, back it up, remove it, and then compile. Restart OpenCode
-after the generated file changes.
+APM does not overwrite a hand-authored `~/.config/opencode/AGENTS.md`.
+Incorporate its required content into the packaged instruction, back it up,
+remove it, and then compile. Restart OpenCode after the generated file changes.
 
 ### Install All Skills
 

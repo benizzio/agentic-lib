@@ -13,6 +13,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import yaml
+
 from validate_packages import (
     Package,
     REPO_ROOT,
@@ -328,6 +330,21 @@ def test_root_global_instruction(apm: str, parent: Path) -> None:
         work.mkdir()
         home.mkdir()
         package.mkdir()
+        global_manifest_root = home / ".apm"
+        global_manifest_root.mkdir()
+        global_manifest = global_manifest_root / "apm.yml"
+        global_manifest.write_text(
+            "name: test-global\n"
+            "version: 1.0.0\n"
+            "targets:\n"
+            "  - agent-skills\n"
+            "dependencies:\n"
+            "  apm: []\n"
+            "  mcp: []\n"
+            "includes: auto\n"
+            "scripts: {}\n",
+            encoding="utf-8",
+        )
         shutil.copy2(REPO_ROOT / "apm.yml", package / "apm.yml")
         shutil.copytree(
             REPO_ROOT / ".apm" / "instructions", package / ".apm" / "instructions"
@@ -341,16 +358,27 @@ def test_root_global_instruction(apm: str, parent: Path) -> None:
             work,
             env,
         )
-        manifest = load_yaml_mapping(home / ".apm" / "apm.yml")
+        manifest = load_yaml_mapping(global_manifest)
         declared_targets = manifest.get("targets", manifest.get("target"))
-        if declared_targets != ["opencode"]:
+        if declared_targets != ["agent-skills"]:
             raise ValidationError(
-                f"{home / '.apm' / 'apm.yml'}: expected targets: [opencode], "
+                f"{global_manifest}: explicit install unexpectedly replaced existing targets; "
                 f"found {declared_targets!r}"
             )
 
-        require_success([apm, "compile", "--global", "--dry-run"], work, env)
         output = home / ".config" / "opencode" / "AGENTS.md"
+        require_success([apm, "compile", "--global", "--dry-run"], work, env)
+        if output.exists():
+            raise ValidationError(
+                f"{output}: agent-skills-only global manifest produced OpenCode output"
+            )
+
+        manifest["targets"] = ["agent-skills", "opencode"]
+        global_manifest.write_text(
+            yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
+        )
+
+        require_success([apm, "compile", "--global", "--dry-run"], work, env)
         if output.exists():
             raise ValidationError(f"{output}: global compile dry-run wrote an output file")
         if (home / ".claude" / "CLAUDE.md").exists():
