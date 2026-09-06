@@ -173,8 +173,9 @@ apm compile --global --dry-run
 apm compile --global
 ```
 
-The first command stages the package under `~/.apm/`. The second writes the
-APM-managed `~/.config/opencode/AGENTS.md`. APM `v0.29.1` reads the global
+The first command stages the package under `~/.apm/`. The second previews the
+compilation without writing files, and the third writes the APM-managed
+`~/.config/opencode/AGENTS.md`. APM `v0.29.1` reads the global
 manifest's `targets:` declaration, so an OpenCode-only manifest does not create
 context files for unrelated harnesses.
 
