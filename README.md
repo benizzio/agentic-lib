@@ -29,9 +29,8 @@ Verify the installation with `apm --version`.
 
 #### `global-AGENTS`
 
-Unconditional security requirements for agent access to external services and
-host credentials. APM compiles this source into the selected harness's global
-context file.
+Instructions required in every session of the selected harness. APM compiles
+this source into the selected harness's global context file.
 
 ### Skills
 

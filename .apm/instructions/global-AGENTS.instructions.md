@@ -1,5 +1,5 @@
 ---
-description: Security requirements for external services and host credentials.
+description: Instructions required in every session of the selected harness.
 ---
 
 ## Security directives - NON NEGOTIABLE
