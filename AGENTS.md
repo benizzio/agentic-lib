@@ -44,7 +44,39 @@ TBD
 
 <CodeStructure>
 
-TBD
+```text
+apm.yml                              Root artifacts package manifest and version
+.apm/
+  instructions/                      Distributable instruction sources
+  skills/<skill>/                     Root package skills and supporting files
+plugins/<plugin>/
+  plugin.yml                         Shared package metadata, version, and artifact mappings
+  source/
+    agents/                          Canonical agent definitions
+    skills/                          Canonical skills and their supporting scripts
+    modules/                         Reference modules embedded in generated skills
+  targets/<target>.yml               Target frontmatter overlays and install-test expectations
+  UPSTREAM.md                        Upstream provenance and adaptation notes
+  UPSTREAM_LICENSE                   Preserved upstream license
+packages/plugins/<plugin>/<target>/  Generated, committed, installable target packages
+scripts/
+  build.py                           Generates target packages and checks for drift
+  validate_packages.py               Validates generated packages and runs APM audits/dry packs
+  test_apm_install.py                 Exercises project and global package installations
+tests/                               Builder, research-validator, and package-validator unit tests
+  fixtures/                          Research-validator sample schemas and data
+.github/workflows/validate.yml       CI validation workflow
+Makefile                             Setup, build, test, audit, and validation entrypoints
+requirements-build.txt               Repository build dependencies
+README.md                            Artifact catalog, installation, and maintenance guidance
+AGENTS.md                            Instructions for agents maintaining this repository
+```
+
+- The root package (`apm.yml` and `.apm/`) is independent of the generated plugin packages.
+- Edit root artifacts under `.apm/`. The distributable global instructions are in `.apm/instructions/global-AGENTS.instructions.md`; this repository's `AGENTS.md` governs local maintenance.
+- Edit plugin artifacts under `plugins/<plugin>/source/`, target-specific settings under `targets/`, and shared metadata and mappings in `plugin.yml`. The current plugin is `deep-research`, with `opencode` and `copilot` targets.
+- Do not edit `packages/plugins/` manually. Regenerate it with `make build`, commit source and generated changes together, and verify parity with `make check`.
+- `apm_modules/` and `build/` are ignored local APM outputs. `.venv/` and Python caches are local tooling artifacts, not canonical sources.
 
 </CodeStructure>
 
