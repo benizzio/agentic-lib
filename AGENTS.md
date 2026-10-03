@@ -1,5 +1,5 @@
-<!--suppress HtmlUnknownTag -->
 
+- After implementation of a change and PR merge, all versioned artifacts must have incremented versions relative to `main` following the established rules
 # General Agent Rules when coding in this repo
 
 ## Agent Persona/Role
@@ -51,6 +51,15 @@ TBD
 ### Coding standards
 
 <CodingStandards>
+
+### Artifact Versioning
+
+- After implementation of a change and PR merge, all versioned artifacts must have incremented versions relative to `main` following the established rules
+- Version distributable packages, not each file shipped inside them. Skills, agents, instructions, and other embedded artifacts inherit the version of their containing package. Do not add per-artifact `metadata.version` fields unless an artifact is intentionally released and consumed independently.
+- The root APM package version is `version` in `apm.yml`. Each plugin package version is `package.version` in `plugins/<name>/plugin.yml`.
+- Use Semantic Versioning 2.0.0: `MAJOR.MINOR.PATCH`, with valid optional prerelease or build metadata only when needed. Do not use placeholders such as `0.0.0` for release
+- Bump only the package whose distributable contents changed. Changes to artifacts included by the root `apm.yml` require a root package version bump. Changes to plugin source artifacts require a plugin package version bump; keep every generated target package at exactly that same version.
+- After changing a plugin version or its source, run `make build` and include the generated target manifests and artifacts in the same change. Run `make check` to verify generated output is in sync.
 
 <LiteratureAndIndustryReferences>
 

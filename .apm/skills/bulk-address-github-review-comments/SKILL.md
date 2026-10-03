@@ -5,7 +5,6 @@ compatibility: Requires a local git checkout, network access, and GitHub access 
 metadata:
   author: Benizzio with OpenCode
   maturity: beta
-  version: 0.0.0
   scope: project-local
 ---
 
