@@ -59,17 +59,11 @@ plugins/<plugin>/
   UPSTREAM.md                        Upstream provenance and adaptation notes
   UPSTREAM_LICENSE                   Preserved upstream license
 packages/plugins/<plugin>/<target>/  Generated, committed, installable target packages
-scripts/
-  build.py                           Generates target packages and checks for drift
-  validate_packages.py               Validates generated packages and runs APM audits/dry packs
-  test_apm_install.py                 Exercises project and global package installations
+scripts/                             Package generation, drift checks, validation, and install tests
 tests/                               Builder, research-validator, and package-validator unit tests
   fixtures/                          Research-validator sample schemas and data
 .github/workflows/validate.yml       CI validation workflow
 Makefile                             Setup, build, test, audit, and validation entrypoints
-requirements-build.txt               Repository build dependencies
-README.md                            Artifact catalog, installation, and maintenance guidance
-AGENTS.md                            Instructions for agents maintaining this repository
 ```
 
 - The root package (`apm.yml` and `.apm/`) is independent of the generated plugin packages.
