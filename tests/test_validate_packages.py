@@ -221,22 +221,63 @@ class DryReviewerTests(unittest.TestCase):
         source_version = validate_packages.load_yaml_mapping(
             ROOT / "plugins/hyperfocus-review/plugin.yml"
         )["package"]["version"]
-        self.assertEqual(source_version, "0.1.0")
+        self.assertEqual(source_version, "0.1.1")
         for target, package in self.packages.items():
             manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
             self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
             self.assertEqual(manifest["version"], source_version)
-            self.assertEqual(manifest["includes"], [".apm/agents/"])
+            self.assertEqual(manifest["includes"], [".apm/agents/", ".apm/skills/"])
             agent = package.root / ".apm/agents/dry-reviewer.agent.md"
             body = agent.read_text(encoding="utf-8").split("---", 2)[2].strip()
             self.assertEqual(body, source_body)
+
+    def test_service_references_use_progressive_disclosure(self) -> None:
+        source_root = ROOT / "plugins/hyperfocus-review/source"
+        body = (source_root / "agents/dry-reviewer.md").read_text(encoding="utf-8")
+        self.assertNotIn("GitHub", body)
+        self.assertNotIn("pull_request_review_write", body)
+        self.assertIn("review-publication", body)
+        for package in self.packages.values():
+            reference_root = Path("skills/review-publication")
+            for relative in (reference_root / "SKILL.md", reference_root / "references/github.md"):
+                source = source_root / relative
+                generated = package.root / ".apm" / relative
+                if relative.name == "SKILL.md":
+                    self.assertEqual(
+                        validate_packages.frontmatter(source)[1],
+                        validate_packages.frontmatter(generated)[1],
+                    )
+                    self.assertEqual(
+                        source.read_text().split("---", 2)[2].strip(),
+                        generated.read_text().split("---", 2)[2].strip(),
+                    )
+                else:
+                    self.assertEqual(source.read_bytes(), generated.read_bytes())
+
+    def test_web_access_without_source_mutation_tools(self) -> None:
+        rules = self.metadata("opencode")["permissions"]
+        for action in ("websearch", "webfetch"):
+            self.assertIn({"action": action, "resource": "*", "effect": "allow"}, rules)
+        for action in ("edit", "shell", "execute"):
+            self.assertIn({"action": action, "resource": "*", "effect": "deny"}, rules)
+            for effect in ("ask", "allow"):
+                modified = [
+                    {**rule, "effect": effect} if rule["action"] == action else rule
+                    for rule in rules
+                ]
+                self.assertTrue(self.check_metadata("opencode", {**self.metadata("opencode"), "permissions": modified}))
+        tools = self.metadata("copilot")["tools"]
+        self.assertIn("web", tools)
+        self.assertFalse({"edit", "execute", "shell", "agent"} & set(tools))
+        for tool in ("edit", "execute", "shell", "agent"):
+            self.assertTrue(self.check_metadata("copilot", {**self.metadata("copilot"), "tools": tools + [tool]}))
 
     def test_behavioral_fixtures_have_distinct_cases_and_expectations(self) -> None:
         fixtures = validate_packages.load_yaml_mapping(
             ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
         )["cases"]
-        self.assertEqual(len(fixtures), 12)
-        self.assertEqual(len({case["id"] for case in fixtures}), 12)
+        self.assertEqual(len(fixtures), 16)
+        self.assertEqual(len({case["id"] for case in fixtures}), 16)
         for case in fixtures:
             with self.subTest(case=case["id"]):
                 self.assertTrue(case["request"].strip())

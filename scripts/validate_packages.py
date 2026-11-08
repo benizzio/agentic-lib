@@ -32,9 +32,13 @@ DRY_REVIEWER_OPENCODE_RULES = [
     ("read", "*.env.example", "allow"),
     ("glob", "*", "allow"),
     ("grep", "*", "allow"),
+    ("websearch", "*", "allow"),
+    ("webfetch", "*", "allow"),
+    ("skill", "review-publication", "allow"),
     ("question", "*", "allow"),
-    ("execute", "*", "allow"),
-    ("shell", "*", "ask"),
+    ("edit", "*", "deny"),
+    ("execute", "*", "deny"),
+    ("shell", "*", "deny"),
     ("external_directory", "*", "ask"),
     ("context7_resolve_library_id", "*", "allow"),
     ("context7_query_docs", "*", "allow"),
@@ -45,7 +49,7 @@ DRY_REVIEWER_OPENCODE_RULES = [
     ("github_add_comment_to_pending_review", "*", "ask"),
 ]
 DRY_REVIEWER_COPILOT_TOOLS = [
-    "read", "search", "context7/resolve-library-id", "context7/query-docs",
+    "read", "search", "web", "context7/resolve-library-id", "context7/query-docs",
     "github/get_me", "github/get_file_contents", "github/pull_request_read",
     "github/pull_request_review_write", "github/add_comment_to_pending_review",
 ]

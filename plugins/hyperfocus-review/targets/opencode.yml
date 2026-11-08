@@ -13,9 +13,13 @@ frontmatter:
       - {action: read, resource: "*.env.example", effect: allow}
       - {action: glob, resource: "*", effect: allow}
       - {action: grep, resource: "*", effect: allow}
+      - {action: websearch, resource: "*", effect: allow}
+      - {action: webfetch, resource: "*", effect: allow}
+      - {action: skill, resource: review-publication, effect: allow}
       - {action: question, resource: "*", effect: allow}
-      - {action: execute, resource: "*", effect: allow}
-      - {action: shell, resource: "*", effect: ask}
+      - {action: edit, resource: "*", effect: deny}
+      - {action: execute, resource: "*", effect: deny}
+      - {action: shell, resource: "*", effect: deny}
       - {action: external_directory, resource: "*", effect: ask}
       - {action: context7_resolve_library_id, resource: "*", effect: allow}
       - {action: context7_query_docs, resource: "*", effect: allow}
@@ -28,5 +32,9 @@ frontmatter:
 tests:
   project_paths:
     - .opencode/agents/dry-reviewer.md
+    - .agents/skills/review-publication/SKILL.md
+    - .agents/skills/review-publication/references/github.md
   global_paths:
     - .config/opencode/agents/dry-reviewer.md
+    - .agents/skills/review-publication/SKILL.md
+    - .agents/skills/review-publication/references/github.md

@@ -112,13 +112,7 @@ def expected_paths(package: Package, scope: str) -> set[Path]:
     layout = TARGET_LAYOUTS.get(package.target)
     if layout is None:
         raise ValidationError(f"unsupported APM install target for path assertions: {package.target}")
-    skill_root = layout[f"{scope}_skills"]
-    skill_files = sorted((package.root / ".apm" / "skills").glob("**/*"))
-    configured.update(
-        skill_root / path.relative_to(package.root / ".apm" / "skills")
-        for path in skill_files
-        if path.is_file()
-    )
+    configured.update(installed_skill_files(package, scope))
     configured.update(installed_agents(package, scope))
     return configured
 
@@ -132,6 +126,16 @@ def installed_agents(package: Package, scope: str) -> dict[Path, Path]:
             name = name[: -len(".agent.md")] + ".md"
         agents[layout[f"{scope}_agents"] / name] = source
     return agents
+
+
+def installed_skill_files(package: Package, scope: str) -> dict[Path, Path]:
+    source_root = package.root / ".apm" / "skills"
+    destination_root = TARGET_LAYOUTS[package.target][f"{scope}_skills"]
+    return {
+        destination_root / source.relative_to(source_root): source
+        for source in sorted(source_root.rglob("*"))
+        if source.is_file()
+    }
 
 
 def assert_frontmatter(package: Package, agent: Path) -> None:
@@ -161,6 +165,9 @@ def assert_install(package: Package, root: Path, scope: str) -> None:
         source = expected[agent.relative_to(root)]
         if agent.read_bytes() != source.read_bytes():
             raise ValidationError(f"{agent}: deployed agent differs from package source")
+    for destination, source in installed_skill_files(package, scope).items():
+        if (root / destination).read_bytes() != source.read_bytes():
+            raise ValidationError(f"{root / destination}: deployed skill file differs from package source")
     other = root / layout[f"other_{scope}"]
     if other.exists():
         raise ValidationError(f"{other}: other target's agent directory was created")

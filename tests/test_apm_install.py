@@ -24,12 +24,15 @@ class InstallTests(unittest.TestCase):
         self.packages = validate_packages.discover_packages()
 
     def deploy_agents(self, package, root: Path, scope: str) -> None:
-        for destination, source in install.installed_agents(package, scope).items():
+        files = install.installed_agents(package, scope)
+        if package.plugin == "hyperfocus-review":
+            files.update(install.installed_skill_files(package, scope))
+        for destination, source in files.items():
             path = root / destination
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, path)
 
-    def test_agent_only_install_needs_no_research_resources(self) -> None:
+    def test_reviewer_install_needs_references_but_no_research_resources(self) -> None:
         for package in self.packages:
             if package.plugin != "hyperfocus-review":
                 continue
@@ -74,10 +77,43 @@ class InstallTests(unittest.TestCase):
             if package.plugin != "hyperfocus-review":
                 continue
             with tempfile.TemporaryDirectory() as raw:
-                self.assertEqual(
-                    install.global_install_commands("apm", package, Path(raw)),
-                    (["apm", "install", str(package.root.resolve()), "--target", package.target, "--global"],),
+                root = Path(raw)
+                shutil.copytree(package.root / ".apm/agents", root / ".apm/agents")
+                agent_only = validate_packages.Package(
+                    package.plugin, package.target, root, package.config_path, package.config
                 )
+                self.assertEqual(
+                    install.global_install_commands("apm", agent_only, root),
+                    (["apm", "install", str(root.resolve()), "--target", package.target, "--global"],),
+                )
+
+    def test_reviewer_references_are_required_and_preserved(self) -> None:
+        for package in self.packages:
+            if package.plugin != "hyperfocus-review":
+                continue
+            for scope in ("project", "global"):
+                for mutation in ("missing", "modified"):
+                    with self.subTest(target=package.target, scope=scope, mutation=mutation), tempfile.TemporaryDirectory() as raw:
+                        root = Path(raw)
+                        self.deploy_agents(package, root, scope)
+                        reference = next(
+                            path for path in install.installed_skill_files(package, scope)
+                            if path.name == "github.md"
+                        )
+                        if mutation == "missing":
+                            (root / reference).unlink()
+                        else:
+                            (root / reference).write_text("Changed guide.\n", encoding="utf-8")
+                        with self.assertRaises(install.ValidationError):
+                            install.assert_install(package, root, scope)
+
+    def test_reviewer_global_opencode_uses_shared_reference_workaround(self) -> None:
+        package = next(p for p in self.packages if p.plugin == "hyperfocus-review" and p.target == "opencode")
+        with tempfile.TemporaryDirectory() as raw:
+            commands = install.global_install_commands("apm", package, Path(raw))
+            self.assertEqual(len(commands), 2)
+            self.assertIn("agent-skills", commands[0])
+            self.assertIn("opencode", commands[1])
 
     def test_global_workaround_discovers_all_agents_and_preserves_version(self) -> None:
         original = next(p for p in self.packages if p.target == "opencode" and p.plugin == "deep-research")

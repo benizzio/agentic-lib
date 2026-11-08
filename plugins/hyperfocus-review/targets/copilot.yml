@@ -8,6 +8,7 @@ frontmatter:
     tools:
       - read
       - search
+      - web
       - context7/resolve-library-id
       - context7/query-docs
       - github/get_me
@@ -19,5 +20,9 @@ frontmatter:
 tests:
   project_paths:
     - .github/agents/dry-reviewer.agent.md
+    - .agents/skills/review-publication/SKILL.md
+    - .agents/skills/review-publication/references/github.md
   global_paths:
     - .copilot/agents/dry-reviewer.agent.md
+    - .agents/skills/review-publication/SKILL.md
+    - .agents/skills/review-publication/references/github.md

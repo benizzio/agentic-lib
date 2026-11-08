@@ -15,6 +15,9 @@ on both OpenCode and Copilot CLI. Do not combine cases into one review.
 3. Verify the installed agent is selected, including its prompt and target
    permissions. Record harness/model versions and which tools the subagent
    actually receives. Do not infer exposure from the parent catalog.
+   OpenCode must deny edit, shell, Code Mode, and delegation; configure required
+   MCP servers with `codemode: false`. Copilot must omit editing, execution, and
+   delegation. Verify native web search/fetch exposure separately in each target.
 4. Use stubbed remote tools only. For each publication case, record the tool
    trace and scripted replies specified in the case. Do not use real GitHub
    review-write tools against an arbitrary PR. If the harness cannot substitute
@@ -44,6 +47,14 @@ on both OpenCode and Copilot CLI. Do not combine cases into one review.
   read/response confirms submitted state and link. Expect only confirmation/link
   locally and the complete scope/evidence remotely. Also run no-findings with a
   summary-only COMMENT review. Do not approve or request changes.
+- CLI fallback: stub caller execution, not reviewer shell tools. Require explicit
+  user authorization before requests for `gh` operations. Return fixed identity,
+  head and review state, pending ID, sequential comment results, then confirmed
+  COMMENT submission. Rerun with authorization absent, caller execution absent,
+  and an ambiguous write. Preserve report and recovery behavior without granting
+  reviewer execution access or blindly switching transports.
+- References: record reads/skill loads. Remote publication loads the index and
+  selected guide; report-only reviews do not. Check missing-reference fallback.
 
 ## Verification status for this change
 
