@@ -68,7 +68,7 @@ Makefile                             Setup, build, test, audit, and validation e
 
 - The root package (`apm.yml` and `.apm/`) is independent of the generated plugin packages.
 - Edit root artifacts under `.apm/`. The distributable global instructions are in `.apm/instructions/global-AGENTS.instructions.md`; this repository's `AGENTS.md` governs local maintenance.
-- Edit plugin artifacts under `plugins/<plugin>/source/`, target-specific settings under `targets/`, and shared metadata and mappings in `plugin.yml`. The current plugin is `deep-research`, with `opencode` and `copilot` targets.
+- Edit plugin artifacts under `plugins/<plugin>/source/`, target-specific settings under `targets/`, and shared metadata and mappings in `plugin.yml`. The current plugins are `deep-research` and `hyperfocus-review`, both with `opencode` and `copilot` targets.
 - Do not edit `packages/plugins/` manually. Regenerate it with `make build`, commit source and generated changes together, and verify parity with `make check`.
 - `apm_modules/` and `build/` are ignored local APM outputs. `.venv/` and Python caches are local tooling artifacts, not canonical sources.
 

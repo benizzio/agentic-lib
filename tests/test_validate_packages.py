@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import importlib.util
 import sys
 import tempfile
@@ -189,6 +190,96 @@ class ContentChecksTests(unittest.TestCase):
                 "['read', 'edit', 'search', 'web']"
             ],
         )
+
+
+class DryReviewerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.packages = {
+            package.target: package
+            for package in validate_packages.discover_packages()
+            if package.plugin == "hyperfocus-review"
+        }
+
+    def check_metadata(self, target: str, metadata: dict) -> list[str]:
+        return validate_packages.agent_frontmatter_errors(
+            self.packages[target], Path("dry-reviewer.agent.md"), metadata
+        )
+
+    def metadata(self, target: str) -> dict:
+        return validate_packages.frontmatter(
+            self.packages[target].root / ".apm/agents/dry-reviewer.agent.md"
+        )[1]
+
+    def test_generated_packages_pass_content_checks(self) -> None:
+        self.assertEqual(set(self.packages), {"opencode", "copilot"})
+        for package in self.packages.values():
+            self.assertEqual(validate_packages._content_checks(package, ROOT), [])
+
+    def test_canonical_body_and_package_version_are_preserved(self) -> None:
+        source = ROOT / "plugins/hyperfocus-review/source/agents/dry-reviewer.md"
+        source_body = source.read_text(encoding="utf-8").split("---", 2)[2].strip()
+        source_version = validate_packages.load_yaml_mapping(
+            ROOT / "plugins/hyperfocus-review/plugin.yml"
+        )["package"]["version"]
+        self.assertEqual(source_version, "0.1.0")
+        for target, package in self.packages.items():
+            manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
+            self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
+            self.assertEqual(manifest["version"], source_version)
+            self.assertEqual(manifest["includes"], [".apm/agents/"])
+            agent = package.root / ".apm/agents/dry-reviewer.agent.md"
+            body = agent.read_text(encoding="utf-8").split("---", 2)[2].strip()
+            self.assertEqual(body, source_body)
+
+    def test_behavioral_fixtures_have_distinct_cases_and_expectations(self) -> None:
+        fixtures = validate_packages.load_yaml_mapping(
+            ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
+        )["cases"]
+        self.assertEqual(len(fixtures), 12)
+        self.assertEqual(len({case["id"] for case in fixtures}), 12)
+        for case in fixtures:
+            with self.subTest(case=case["id"]):
+                self.assertTrue(case["request"].strip())
+                self.assertTrue(case["expected"].strip())
+                if "files" in case:
+                    self.assertTrue(case["diff"].strip())
+                    self.assertTrue(all(isinstance(value, str) for value in case["files"].values()))
+
+    def test_rejects_policy_broadening_reordering_and_missing_rules(self) -> None:
+        metadata = self.metadata("opencode")
+        rules = metadata["permissions"]
+        mutations = [
+            rules[1:],
+            list(reversed(rules)),
+            rules + [{"action": "edit", "resource": "*", "effect": "allow"}],
+            [{**rule, "effect": "allow"} if rule["action"] == "shell" else rule for rule in rules],
+            [{**rule, "effect": "allow"} if rule["action"] == "github_pull_request_review_write" else rule for rule in rules],
+            [{**rule, "extra": True} for rule in rules],
+            {},
+        ]
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                self.assertTrue(self.check_metadata("opencode", {**metadata, "permissions": mutation}))
+
+    def test_rejects_cross_target_fields_models_and_identity_bypass(self) -> None:
+        for target, changes in (
+            ("opencode", {"tools": ["read"]}),
+            ("opencode", {"include-custom-instructions": True}),
+            ("opencode", {"permission": {}}),
+            ("copilot", {"permissions": []}),
+            ("copilot", {"mode": "subagent"}),
+            ("copilot", {"include-custom-instructions": False}),
+            ("copilot", {"tools": ["*"]}),
+            ("copilot", {"tools": ["read", "search", "execute"]}),
+            ("opencode", {"model": "pinned"}),
+            ("copilot", {"model": "pinned"}),
+            ("opencode", {"name": "other-agent"}),
+            ("copilot", {"name": "other-agent"}),
+        ):
+            with self.subTest(target=target, changes=changes):
+                metadata = copy.deepcopy(self.metadata(target))
+                metadata.update(changes)
+                self.assertTrue(self.check_metadata(target, metadata))
 
 
 class ValidateTests(unittest.TestCase):

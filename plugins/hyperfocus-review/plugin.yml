@@ -1,0 +1,13 @@
+schema_version: 1
+
+package:
+  version: 0.1.0
+  description: Focused code review agents for DRY, reuse, and utility extraction.
+  author: benizzio
+  license: MIT
+  repository: https://github.com/benizzio/agentic-lib
+
+artifacts:
+  - source: source/agents/dry-reviewer.md
+    destination: .apm/agents/dry-reviewer.agent.md
+    frontmatter: true
