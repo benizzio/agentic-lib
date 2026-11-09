@@ -221,7 +221,7 @@ class DryReviewerTests(unittest.TestCase):
         source_version = validate_packages.load_yaml_mapping(
             ROOT / "plugins/hyperfocus-review/plugin.yml"
         )["package"]["version"]
-        self.assertEqual(source_version, "0.1.1")
+        self.assertEqual(source_version, "0.1.2")
         for target, package in self.packages.items():
             manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
             self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
@@ -254,11 +254,11 @@ class DryReviewerTests(unittest.TestCase):
                 else:
                     self.assertEqual(source.read_bytes(), generated.read_bytes())
 
-    def test_web_access_without_source_mutation_tools(self) -> None:
+    def test_web_access_and_direct_edit_restrictions(self) -> None:
         rules = self.metadata("opencode")["permissions"]
         for action in ("websearch", "webfetch"):
             self.assertIn({"action": action, "resource": "*", "effect": "allow"}, rules)
-        for action in ("edit", "shell", "execute"):
+        for action in ("edit", "subagent"):
             self.assertIn({"action": action, "resource": "*", "effect": "deny"}, rules)
             for effect in ("ask", "allow"):
                 modified = [
@@ -268,16 +268,35 @@ class DryReviewerTests(unittest.TestCase):
                 self.assertTrue(self.check_metadata("opencode", {**self.metadata("opencode"), "permissions": modified}))
         tools = self.metadata("copilot")["tools"]
         self.assertIn("web", tools)
-        self.assertFalse({"edit", "execute", "shell", "agent"} & set(tools))
-        for tool in ("edit", "execute", "shell", "agent"):
+        self.assertIn("execute", tools)
+        self.assertFalse({"edit", "agent"} & set(tools))
+        for tool in ("edit", "agent"):
             self.assertTrue(self.check_metadata("copilot", {**self.metadata("copilot"), "tools": tools + [tool]}))
+
+    def test_execution_and_tool_discovery_require_appropriate_permissions(self) -> None:
+        metadata = self.metadata("opencode")
+        rules = metadata["permissions"]
+        self.assertEqual(rules[0], {"action": "*", "resource": "*", "effect": "ask"})
+        self.assertIn({"action": "execute", "resource": "*", "effect": "allow"}, rules)
+        self.assertIn({"action": "shell", "resource": "*", "effect": "ask"}, rules)
+        self.assertFalse(any(
+            "*" in rule["action"] and rule["effect"] == "allow"
+            for rule in rules
+        ))
+        for action, effect in (("*", "allow"), ("*", "deny"), ("shell", "allow"), ("shell", "deny"), ("execute", "deny")):
+            with self.subTest(action=action, effect=effect):
+                modified = [
+                    {**rule, "effect": effect} if rule["action"] == action else rule
+                    for rule in rules
+                ]
+                self.assertTrue(self.check_metadata("opencode", {**metadata, "permissions": modified}))
 
     def test_behavioral_fixtures_have_distinct_cases_and_expectations(self) -> None:
         fixtures = validate_packages.load_yaml_mapping(
             ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
         )["cases"]
-        self.assertEqual(len(fixtures), 16)
-        self.assertEqual(len({case["id"] for case in fixtures}), 16)
+        self.assertEqual(len(fixtures), 20)
+        self.assertEqual(len({case["id"] for case in fixtures}), 20)
         for case in fixtures:
             with self.subTest(case=case["id"]):
                 self.assertTrue(case["request"].strip())

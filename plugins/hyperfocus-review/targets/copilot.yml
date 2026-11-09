@@ -9,6 +9,7 @@ frontmatter:
       - read
       - search
       - web
+      - execute
       - context7/resolve-library-id
       - context7/query-docs
       - github/get_me

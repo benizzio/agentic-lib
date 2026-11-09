@@ -5,22 +5,41 @@ tool exposure. The root README's development warning still applies.
 
 ## Reviewer-only access
 
-`dry-reviewer` recommends changes; it never implements them. OpenCode denies
-edits, shell, unrestricted Code Mode, and subagent delegation. Copilot exposes
-no editing, shell/execution, or delegation tool. Both allow native web search
-and fetching for documentation, subject to the consuming harness's policies
-and availability. Permission does not provision a web-search integration.
+`dry-reviewer` recommends changes; it never implements them. It discovers the
+tools and execution facilities available in its harness and chooses operations
+by their effects, not a fixed exploration-tool list. Tools and shell commands
+may inspect code, but must not change source or versioned repository artifacts.
+Unfamiliar operations require checking documentation, options, configuration,
+hooks, and output paths. If source-write effects cannot be ruled out, the agent
+must ask for clarification or use a safer alternative, not execute speculatively.
+Caches, indexes, and temporary outputs are allowed outside the source tree when
+their locations and effects are understood and permitted by the caller.
 
-OpenCode MCP servers used by this agent must set `codemode: false` so their
-individual tools can be called directly. Code Mode is deliberately denied:
-although it has no direct filesystem access, it exposes raw HTTP and tools
-outside the narrow review workflow. Do not enable it to work around a missing
-MCP tool. Verify the tools actually exposed to the installed subagent.
+### Harness permissions
 
-The overlays assume MCP server names `github` and `context7`. Only listed tools
-are available; adapt names in the consuming configuration if necessary. Review
-writes require OpenCode approval. Tool-level permissions cannot restrict the
-method/event arguments of GitHub's review-write tool; inspect each approval.
+- **OpenCode:** direct edits and nested delegation are denied. Code Mode is
+  enabled for tool orchestration; MCP servers need not set `codemode: false`.
+  Shell commands and unfamiliar tool actions require approval, rather than a
+  hardcoded command/tool allowlist. Existing read-only documentation and review
+  inspection integrations remain allowed. Nested tools retain their permissions.
+- **Copilot CLI:** the profile includes `execute` for shell commands alongside
+  reading, searching, web access, and the existing review integrations. It omits
+  editing and delegation tools. Shell approval is controlled by the consuming
+  CLI's permission settings, not this profile. Keep interactive approval enabled
+  or apply an appropriate host policy; do not assume this profile forces it.
+  The profile cannot express all MCP tools except editing tools. Unlisted MCP
+  tools need consumer configuration; the agent can discover CLI alternatives
+  without the package naming exploration products.
+
+Both targets allow native web search/fetch subject to harness policies and
+availability. Permission does not provision tools or a web-search integration.
+Existing review/documentation MCP mappings assume server names `github` and
+`context7`; adapt them in the consuming configuration if needed. Verify the
+tools actually exposed to the installed subagent, not merely its parent.
+Review-write approvals are tool-level and cannot restrict method/event arguments;
+inspect approvals rather than granting broad permanent permissions.
+
+
 
 ## Progressive publication references
 
@@ -28,8 +47,9 @@ The agent's operating contract is service-neutral. After identifying a remote
 target and publication intent, it loads `review-publication/SKILL.md` and only
 the matching service guide under `references/`. Report-only reviews need none
 of these references. The GitHub guide includes MCP publication and explicitly
-authorized `gh` fallback through the caller, without granting the reviewer a
-shell. A fallback never bypasses user authorization or state checks.
+authorized `gh` fallback through an available, approved shell, or caller-supplied
+results when execution is unavailable. A fallback never bypasses transport
+authorization, source-write restrictions, or review-state checks.
 
 Reference skills are packaged alongside the agent, not as standalone agents.
 Project installs deploy them under `.agents/skills/`. User-scope installs use

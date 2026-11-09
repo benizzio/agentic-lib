@@ -1,7 +1,7 @@
 schema_version: 1
 
 package:
-  version: 0.1.1
+  version: 0.1.2
   description: Focused code review agents for DRY, reuse, and utility extraction.
   author: benizzio
   license: MIT

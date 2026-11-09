@@ -42,12 +42,13 @@ failure alone is not authorization. Ask for and receive explicit permission
 covering the target and read/write operations before using this transport.
 Do not treat publication intent or a tool approval as blanket CLI authorization.
 
-The reviewer must not acquire shell, editing, or unrestricted execution access.
-Ask the caller to run the approved commands and return their results. Supply
-the exact target, reviewed head, findings, and required state checks. If the
-caller cannot execute them, return the full report with publication unavailable.
+Use an available shell only after required harness approvals and explicit
+authorization for this CLI transport. Keep source unchanged: authorization
+covers the requested review-state writes, not repository modifications. If
+execution or approval is unavailable, ask the caller for results or return the
+full report with publication unavailable.
 
-The caller should verify its installed `gh` help/API contract before execution.
+Verify the installed `gh` help/API contract before execution.
 Use `gh api` for the same pending-review lifecycle, not an unverified shortcut:
 
 1. Read `user`, the PR, existing reviews/comments, and diff metadata. Paginate
