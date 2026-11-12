@@ -221,7 +221,7 @@ class DryReviewerTests(unittest.TestCase):
         source_version = validate_packages.load_yaml_mapping(
             ROOT / "plugins/hyperfocus-review/plugin.yml"
         )["package"]["version"]
-        self.assertEqual(source_version, "0.1.3")
+        self.assertEqual(source_version, "0.1.4")
         for target, package in self.packages.items():
             manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
             self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
@@ -267,6 +267,20 @@ class DryReviewerTests(unittest.TestCase):
                     self.assertIn(rule, text)
                 self.assertNotIn("- Review changed code only.", text)
                 self.assertNotIn("- Changed file and precise line/range", text)
+
+    def test_auxiliary_writes_do_not_override_source_protection(self) -> None:
+        source = ROOT / "plugins/hyperfocus-review/source/agents/dry-reviewer.md"
+        body = " ".join(source.read_text(encoding="utf-8").split())
+        for rule in (
+            "Read-only protects the content being inspected or reviewed, not every filesystem side effect of a tool.",
+            "Do not reject an otherwise permitted operation solely because it produces them.",
+            "directories within the repository are acceptable when they do not alter reviewed content or other repository source artifacts.",
+            "Respect applicable permissions, privacy requirements, and caller restrictions.",
+            "Do not modify source, tests, manifests, lockfiles, configuration, or other versioned repository artifacts",
+            "Do not ask for clarification merely because an operation writes auxiliary data.",
+        ):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, body)
 
     def test_utility_contract_requires_domain_independent_usefulness(self) -> None:
         # Static prompt regressions only; these do not exercise model decisions.
@@ -373,8 +387,8 @@ class DryReviewerTests(unittest.TestCase):
         fixtures = validate_packages.load_yaml_mapping(
             ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
         )["cases"]
-        self.assertEqual(len(fixtures), 28)
-        self.assertEqual(len({case["id"] for case in fixtures}), 28)
+        self.assertEqual(len(fixtures), 30)
+        self.assertEqual(len({case["id"] for case in fixtures}), 30)
         for case in fixtures:
             with self.subTest(case=case["id"]):
                 for field in ("id", "request", "expected"):

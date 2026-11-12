@@ -8,12 +8,16 @@ tool exposure. The root README's development warning still applies.
 `dry-reviewer` recommends changes; it never implements them. It discovers the
 tools and execution facilities available in its harness and chooses operations
 by their effects, not a fixed exploration-tool list. Tools and shell commands
-may inspect code, but must not change source or versioned repository artifacts.
+may inspect code, but must not change reviewed content, source, or versioned
+repository artifacts. Normal auxiliary logs, caches, indexes, telemetry files,
+and temporary outputs are not violations by themselves. Prefer temporary or
+tool-managed locations; dedicated generated-output directories within the
+repository are acceptable if protected content is unaffected. Permissions,
+privacy requirements, and caller restrictions still apply.
 Unfamiliar operations require checking documentation, options, configuration,
-hooks, and output paths. If source-write effects cannot be ruled out, the agent
-must ask for clarification or use a safer alternative, not execute speculatively.
-Caches, indexes, and temporary outputs are allowed outside the source tree when
-their locations and effects are understood and permitted by the caller.
+hooks, and output paths. If changes to protected content cannot be ruled out,
+the agent must ask for clarification or use a safer alternative, not execute
+speculatively. Auxiliary writes alone do not require clarification.
 
 ### Harness permissions
 
