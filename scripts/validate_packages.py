@@ -34,7 +34,6 @@ DRY_REVIEWER_OPENCODE_RULES = [
     ("grep", "*", "allow"),
     ("websearch", "*", "allow"),
     ("webfetch", "*", "allow"),
-    ("skill", "review-publication", "allow"),
     ("question", "*", "allow"),
     ("edit", "*", "deny"),
     ("subagent", "*", "deny"),

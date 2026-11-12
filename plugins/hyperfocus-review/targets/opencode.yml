@@ -15,7 +15,6 @@ frontmatter:
       - {action: grep, resource: "*", effect: allow}
       - {action: websearch, resource: "*", effect: allow}
       - {action: webfetch, resource: "*", effect: allow}
-      - {action: skill, resource: review-publication, effect: allow}
       - {action: question, resource: "*", effect: allow}
       - {action: edit, resource: "*", effect: deny}
       - {action: subagent, resource: "*", effect: deny}
@@ -33,9 +32,5 @@ frontmatter:
 tests:
   project_paths:
     - .opencode/agents/dry-reviewer.md
-    - .agents/skills/review-publication/SKILL.md
-    - .agents/skills/review-publication/references/github.md
   global_paths:
     - .config/opencode/agents/dry-reviewer.md
-    - .agents/skills/review-publication/SKILL.md
-    - .agents/skills/review-publication/references/github.md

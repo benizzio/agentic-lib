@@ -41,23 +41,34 @@ tools actually exposed to the installed subagent, not merely its parent.
 Review-write approvals are tool-level and cannot restrict method/event arguments;
 inspect approvals rather than granting broad permanent permissions.
 
+## Publication discovery
 
+The agent discovers the remote version-control review service, live tool schemas,
+documentation, and permitted capabilities before publication. GitHub PR review
+comments are an example, not a prescribed API workflow or a promise of other
+service support. This package ships only the agent, with no publication skill.
+Discovery cannot provision tools: retain/adapt the explicit MCP mappings above,
+and configure unlisted Copilot MCP tools in the consuming profile.
 
-## Progressive publication references
+Report-only requests cause no publication writes. Publication requires confirmed
+target/intent, identity and duplicate checks, consistent reviewed base/head and
+comparison before publication and submission, and safe invocation-owned review
+ID binding for later mutations. Existing pending state stops publication. An
+operation selecting only the current user's pending review is not safe ID binding.
+Use only an explicitly authorized equivalent operation or return the full report.
+Alternative transports require explicit authorization separate from command
+approval; never search for credentials or silently switch transports.
 
-The agent's operating contract is service-neutral. After identifying a remote
-target and publication intent, it loads `review-publication/SKILL.md` and only
-the matching service guide under `references/`. Report-only reviews need none
-of these references. The GitHub guide includes MCP publication and explicitly
-authorized `gh` fallback through an available, approved shell, or caller-supplied
-results when execution is unavailable. A fallback never bypasses transport
-authorization, source-write restrictions, or review-state checks.
-
-Reference skills are packaged alongside the agent, not as standalone agents.
-Project installs deploy them under `.agents/skills/`. User-scope installs use
-`~/.agents/skills/` with the OpenCode workaround below.
+Findings are added sequentially at valid anchors; unanchorable findings go in the
+summary. Partial or ambiguous failures require state inspection and an accurate
+recovery report, not blind retries or incomplete submission. Success requires
+verified submission. These are cooperative reviewer policies, not a sandbox;
+strict source-write protection requires external read-only source enforcement.
 
 ## Installation checks
+
+Use APM `0.35.0`, the version pinned by this repository's validation suite.
+This is separate from the OpenCode minimum version above.
 
 For project installations, use the package matching your harness:
 
@@ -66,16 +77,15 @@ apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode --t
 apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/copilot --target copilot
 ```
 
-Copilot supports adding `--global`. For global OpenCode with APM `0.35.0`,
-install shared references and the agent separately, as with Deep Research:
+Both targets support adding `--global`. For example:
 
 ```sh
-apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode --target agent-skills --global
-apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode/.apm/agents/dry-reviewer.agent.md --target opencode --global
+apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode --target opencode --global
 ```
 
-Do not install only the agent: remote publication requires the reference bundle.
-`make validate` tests isolated project/global installation, reference contents,
+No shared-skill or two-step install is required for Hyperfocus Review. Deep
+Research's shared-skill workaround remains separate. `make validate` tests
+isolated project/global installation, exact agent contents,
 permission metadata, and repeat-install idempotence for both targets. See
 [`tests/fixtures/hyperfocus-review/README.md`](../../tests/fixtures/hyperfocus-review/README.md)
 for model-backed acceptance checks and their verification status.

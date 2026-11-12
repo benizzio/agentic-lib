@@ -25,14 +25,12 @@ class InstallTests(unittest.TestCase):
 
     def deploy_agents(self, package, root: Path, scope: str) -> None:
         files = install.installed_agents(package, scope)
-        if package.plugin == "hyperfocus-review":
-            files.update(install.installed_skill_files(package, scope))
         for destination, source in files.items():
             path = root / destination
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, path)
 
-    def test_reviewer_install_needs_references_but_no_research_resources(self) -> None:
+    def test_reviewer_install_needs_only_agent(self) -> None:
         for package in self.packages:
             if package.plugin != "hyperfocus-review":
                 continue
@@ -40,6 +38,8 @@ class InstallTests(unittest.TestCase):
                 with self.subTest(target=package.target, scope=scope), tempfile.TemporaryDirectory() as raw:
                     root = Path(raw)
                     self.deploy_agents(package, root, scope)
+                    self.assertEqual(install.installed_skill_files(package, scope), {})
+                    self.assertFalse((root / ".agents/skills").exists())
                     install.assert_install(package, root, scope)
                     agent_root = root / install.TARGET_LAYOUTS[package.target][f"{scope}_agents"]
                     (agent_root / "unexpected.md").write_text("extra", encoding="utf-8")
@@ -76,29 +76,31 @@ class InstallTests(unittest.TestCase):
         for package in self.packages:
             if package.plugin != "hyperfocus-review":
                 continue
-            with tempfile.TemporaryDirectory() as raw:
+            with self.subTest(target=package.target), tempfile.TemporaryDirectory() as raw:
                 root = Path(raw)
-                shutil.copytree(package.root / ".apm/agents", root / ".apm/agents")
-                agent_only = validate_packages.Package(
-                    package.plugin, package.target, root, package.config_path, package.config
-                )
+                self.assertFalse((package.root / ".apm/skills").exists())
                 self.assertEqual(
-                    install.global_install_commands("apm", agent_only, root),
-                    (["apm", "install", str(root.resolve()), "--target", package.target, "--global"],),
+                    install.global_install_commands("apm", package, root),
+                    (["apm", "install", str(package.root.resolve()), "--target", package.target, "--global"],),
                 )
 
-    def test_reviewer_references_are_required_and_preserved(self) -> None:
+    def test_deployed_references_are_required_and_preserved(self) -> None:
         for package in self.packages:
-            if package.plugin != "hyperfocus-review":
+            if package.plugin != "deep-research":
                 continue
             for scope in ("project", "global"):
                 for mutation in ("missing", "modified"):
                     with self.subTest(target=package.target, scope=scope, mutation=mutation), tempfile.TemporaryDirectory() as raw:
                         root = Path(raw)
                         self.deploy_agents(package, root, scope)
+                        for destination, source in install.installed_skill_files(package, scope).items():
+                            path = root / destination
+                            path.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(source, path)
+                        install.assert_install(package, root, scope)
                         reference = next(
                             path for path in install.installed_skill_files(package, scope)
-                            if path.name == "github.md"
+                            if path.name == "github-debug.md"
                         )
                         if mutation == "missing":
                             (root / reference).unlink()
@@ -107,8 +109,8 @@ class InstallTests(unittest.TestCase):
                         with self.assertRaises(install.ValidationError):
                             install.assert_install(package, root, scope)
 
-    def test_reviewer_global_opencode_uses_shared_reference_workaround(self) -> None:
-        package = next(p for p in self.packages if p.plugin == "hyperfocus-review" and p.target == "opencode")
+    def test_deep_research_global_opencode_keeps_shared_skill_workaround(self) -> None:
+        package = next(p for p in self.packages if p.plugin == "deep-research" and p.target == "opencode")
         with tempfile.TemporaryDirectory() as raw:
             commands = install.global_install_commands("apm", package, Path(raw))
             self.assertEqual(len(commands), 2)

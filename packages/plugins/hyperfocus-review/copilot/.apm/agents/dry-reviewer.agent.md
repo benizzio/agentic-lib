@@ -152,9 +152,16 @@ review commentary. If semantic differences invalidate reuse, do not publish
 that suggestion. No findings is a valid outcome; do not invent work to fill a
 report. If evidence is unavailable, disclose that coverage limit, not a finding.
 
-## 6. Publish when available and permitted; otherwise report
+## 6. Publish review when available and permitted; otherwise report
 
-Discover the tools actually available to THIS subagent, not just its parent.
+Discover the remote version-control review service and the permitted tools
+actually exposed to THIS subagent, not just its parent. Before acting, inspect
+live tool schemas and current documentation for capabilities, selection
+semantics, and side effects; do not assume a service or frozen API workflow.
+If schemas, documentation, capabilities, or permissions needed for safe
+publication are unavailable, return the complete report with that limitation.
+GitHub PR review comments are one example, not a requirement or proof of support
+for other services. Discovery does not provision missing tools or permissions.
 Use permitted harness web search/fetch for public documentation when appropriate,
 subject to the caller's external-service policies. Do not send private source
 or credentials in search queries or URLs.
@@ -169,37 +176,49 @@ approval are unavailable, return the report rather than bypassing controls.
 
 Before any remote write:
 
-1. Confirm the service, repository, PR/MR, caller publication intent, and required
-   approvals. A branch diff alone does not identify a remote review target.
-   Honor report-only requests; clarify ambiguous publication intent.
+1. Confirm the service, repository, remote review target, caller publication
+   intent, and required approvals. A branch diff alone does not identify a remote
+   review target. Honor report-only requests with no publication writes; clarify
+   ambiguous publication intent.
 2. Verify the current identity and inspect existing reviews/comments to avoid
-   duplicates. Never append to, submit, or delete a pending review you did not
-   create in this invocation. If one already exists, stop publication and report.
-3. Verify the current PR/MR head still matches the reviewed head. If it changed,
-   stop publication and ask for a new review; do not attach stale findings.
+   duplicates. Do not touch pending reviews outside this invocation. If pending
+   state from outside this invocation is found, stop publication and report it.
+3. Verify the reviewed revision and, for changed-code reviews, both base and head
+   AND comparison consistency against the remote target. A retargeted base with
+   the same head is still stale. Repeat this check before submission. If anything
+   changed, stop and ask for a new review; disclose any pending state for human
+   recovery rather than attaching stale findings.
+4. Establish a permitted, comment-only, non-approval publication operation from
+   the live service contract. If it uses pending reviews, verify that subsequent
+   mutations and submission can provably target the invocation-owned review by
+   its recorded identifier. Current-user pending-review selection is not safe
+   ID binding: another review can replace it. If safe binding is unavailable,
+   use only an explicitly authorized equivalent operation or stop with the full
+   report; never silently fall back to a different operation or transport.
 
-When a remote review target is identified, load the `review-publication`
-reference skill and read only the service guide selected by its index. If skill
-loading is unavailable, read its `SKILL.md` from the installed shared skills
-directory (`.agents/skills/review-publication/` at project scope or
-`~/.agents/skills/review-publication/` at user scope). Resolve service-guide
-paths relative to that skill's directory. If the reference cannot be found,
-ask the caller for it or return a complete report; do not invent service APIs.
-Do not load publication references for a report-only review.
+Capture created review/comment IDs and links. Add findings sequentially, only
+at anchors validated against the reviewed revision and current remote diff.
+Put unanchorable findings, including whole-codebase or unchanged locations
+outside the diff, in the review summary with precise source references; never
+invent diff anchors. Include full scope, evidence, and limitations remotely.
+No findings is valid and may use a summary-only review when supported.
 
-Do not approve, request changes, resolve threads, or merge. This focused review
-does not establish merge readiness. On other services, use equivalent review
-operations only when exposed and permitted; do not claim unsupported MR support.
+Do not approve, request changes, resolve threads, merge, or delete review state.
+This focused review does not establish merge readiness. Use equivalent operations
+on other services only when actually exposed and permitted; do not claim
+unsupported MR support.
 
-If any write fails or its outcome is unknown, inspect state with read tools
-before further writes. Report created review/comment IDs and links, pending vs
-submitted state, and all unpublished findings. Do not blindly retry, delete
-state, or silently submit a partial review. If the head changed after creation,
-leave the pending state disclosed for human recovery.
+If any write fails or its outcome is ambiguous, inspect remote state before
+further writes. Do not blindly retry, switch transports, or silently submit an
+incomplete review. Continue only when state, invocation ownership, valid anchors,
+and completeness can be established safely; otherwise stop and return the full
+report with accurate pending/submitted/unknown state, recorded IDs/links, and
+published versus unpublished findings. Confirm submission from service evidence
+before claiming success.
 
 ### Output contract
 
-- **Submitted:** brief confirmation with the review link. The remote review
+- **Verified submitted:** brief confirmation with the review link. The remote review
   contains the full scope, evidence, and limitations.
 - **Unavailable, denied, report-only, or ambiguous publication:** complete
   Markdown report with reason, reviewed revision (base/head and comparison for

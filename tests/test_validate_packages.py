@@ -226,7 +226,7 @@ class DryReviewerTests(unittest.TestCase):
             manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
             self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
             self.assertEqual(manifest["version"], source_version)
-            self.assertEqual(manifest["includes"], [".apm/agents/", ".apm/skills/"])
+            self.assertEqual(manifest["includes"], [".apm/agents/"])
             agent = package.root / ".apm/agents/dry-reviewer.agent.md"
             body = agent.read_text(encoding="utf-8").split("---", 2)[2].strip()
             self.assertEqual(body, source_body)
@@ -299,28 +299,38 @@ class DryReviewerTests(unittest.TestCase):
                 for rule in required_rules:
                     self.assertIn(rule, text)
 
-    def test_service_references_use_progressive_disclosure(self) -> None:
+    def test_publication_discovers_live_capabilities_without_bundled_skill(self) -> None:
+        # Static prompt regressions only. Canonical parity is checked separately.
         source_root = ROOT / "plugins/hyperfocus-review/source"
-        body = (source_root / "agents/dry-reviewer.md").read_text(encoding="utf-8")
-        self.assertNotIn("GitHub", body)
-        self.assertNotIn("pull_request_review_write", body)
-        self.assertIn("review-publication", body)
+        body = " ".join((source_root / "agents/dry-reviewer.md").read_text(encoding="utf-8").split())
+        for rule in (
+            "## 6. Publish review when available and permitted; otherwise report",
+            "Discover the remote version-control review service",
+            "live tool schemas and current documentation",
+            "capabilities, selection semantics, and side effects",
+            "If schemas, documentation, capabilities, or permissions needed for safe publication are unavailable, return the complete report",
+            "Honor report-only requests with no publication writes",
+            "both base and head AND comparison consistency",
+            "Repeat this check before submission.",
+            "If pending state from outside this invocation is found, stop publication and report it.",
+            "provably target the invocation-owned review by its recorded identifier",
+            "Current-user pending-review selection is not safe ID binding",
+            "use only an explicitly authorized equivalent operation or stop with the full report",
+            "Put unanchorable findings, including whole-codebase or unchanged locations outside the diff, in the review summary",
+            "Do not approve, request changes, resolve threads, merge, or delete review state.",
+            "Do not blindly retry, switch transports, or silently submit an incomplete review.",
+            "Confirm submission from service evidence before claiming success.",
+        ):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, body)
+        for obsolete in ("review-publication", "pull_request_review_write", "submit_pending", "COMMENT"):
+            self.assertNotIn(obsolete, body)
+        self.assertEqual(list((source_root / "skills").rglob("*.md")), [])
         for package in self.packages.values():
-            reference_root = Path("skills/review-publication")
-            for relative in (reference_root / "SKILL.md", reference_root / "references/github.md"):
-                source = source_root / relative
-                generated = package.root / ".apm" / relative
-                if relative.name == "SKILL.md":
-                    self.assertEqual(
-                        validate_packages.frontmatter(source)[1],
-                        validate_packages.frontmatter(generated)[1],
-                    )
-                    self.assertEqual(
-                        source.read_text().split("---", 2)[2].strip(),
-                        generated.read_text().split("---", 2)[2].strip(),
-                    )
-                else:
-                    self.assertEqual(source.read_bytes(), generated.read_bytes())
+            self.assertFalse((package.root / ".apm/skills").exists())
+            for scope in ("project", "global"):
+                self.assertEqual(len(package.config["tests"][f"{scope}_paths"]), 1)
+        self.assertFalse(any(rule["action"] == "skill" for rule in self.metadata("opencode")["permissions"]))
 
     def test_web_access_and_direct_edit_restrictions(self) -> None:
         rules = self.metadata("opencode")["permissions"]
@@ -363,19 +373,43 @@ class DryReviewerTests(unittest.TestCase):
         fixtures = validate_packages.load_yaml_mapping(
             ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
         )["cases"]
-        self.assertEqual(len(fixtures), 22)
-        self.assertEqual(len({case["id"] for case in fixtures}), 22)
+        self.assertEqual(len(fixtures), 28)
+        self.assertEqual(len({case["id"] for case in fixtures}), 28)
         for case in fixtures:
             with self.subTest(case=case["id"]):
-                self.assertTrue(case["request"].strip())
-                self.assertTrue(case["expected"].strip())
+                for field in ("id", "request", "expected"):
+                    self.assertIsInstance(case[field], str)
+                    self.assertTrue(case[field].strip())
                 if "files" in case:
+                    self.assertIsInstance(case["files"], dict)
                     if case.get("review_scope") == "whole-codebase":
                         self.assertTrue(case["revision"].strip())
                         self.assertNotIn("diff", case)
                     else:
                         self.assertTrue(case["diff"].strip())
                     self.assertTrue(all(isinstance(value, str) for value in case["files"].values()))
+
+    def test_publication_fixtures_cover_discovery_and_recovery_decisions(self) -> None:
+        # Expected decisions, not an execution of the publication contract.
+        fixtures = {
+            case["id"]: case
+            for case in validate_packages.load_yaml_mapping(
+                ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
+            )["cases"]
+        }
+        self.assertNotIn("progressive-service-reference", fixtures)
+        for case_id, decision in (
+            ("discovery-based-publication", "no publication writes or installed-guide dependency"),
+            ("synthetic-service-publication", "Discover ForgeBox capabilities"),
+            ("publication-missing-contract", "missing capability/schema/documentation/permission"),
+            ("existing-pending-review", "current-user identity does not prove invocation ownership"),
+            ("review-id-selection-ambiguity", "do not create a review"),
+            ("stale-publication-comparison", "reviewed base/head AND comparison consistency at both gates"),
+            ("publication-anchor-recovery", "never invent anchors"),
+            ("authorized-cli-execution", "request it separately from shell approval"),
+        ):
+            with self.subTest(case=case_id):
+                self.assertIn(decision, fixtures[case_id]["expected"])
 
     def test_scope_fixtures_cover_confirmation_and_unchanged_evidence(self) -> None:
         fixtures = {

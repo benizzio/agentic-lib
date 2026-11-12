@@ -11,6 +11,3 @@ artifacts:
   - source: source/agents/dry-reviewer.md
     destination: .apm/agents/dry-reviewer.agent.md
     frontmatter: true
-  - source: source/skills/
-    destination: .apm/skills/
-    frontmatter_glob: "**/SKILL.md"
