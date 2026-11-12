@@ -221,7 +221,7 @@ class DryReviewerTests(unittest.TestCase):
         source_version = validate_packages.load_yaml_mapping(
             ROOT / "plugins/hyperfocus-review/plugin.yml"
         )["package"]["version"]
-        self.assertEqual(source_version, "0.1.2")
+        self.assertEqual(source_version, "0.1.3")
         for target, package in self.packages.items():
             manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
             self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
@@ -230,6 +230,43 @@ class DryReviewerTests(unittest.TestCase):
             agent = package.root / ".apm/agents/dry-reviewer.agent.md"
             body = agent.read_text(encoding="utf-8").split("---", 2)[2].strip()
             self.assertEqual(body, source_body)
+
+    def test_review_scope_contract_supports_confirmed_whole_codebase(self) -> None:
+        # These are static prompt regressions, not evidence of model behavior.
+        source = ROOT / "plugins/hyperfocus-review/source/agents/dry-reviewer.md"
+        paths = [source] + [
+            package.root / ".apm/agents/dry-reviewer.agent.md"
+            for package in self.packages.values()
+        ]
+        required_rules = (
+            "For changed-code reviews, expect a PR/MR reference",
+            "For a confirmed whole-codebase review, identify the repository and "
+            "reviewed revision; no base or diff is required.",
+            "By default, review changed code only.",
+            "context gathering, not permission to review it.",
+            "Review the whole codebase only after the explicit request and confirmation below.",
+            "A whole-codebase review is an exceptional process and requires an explicit "
+            "request AND confirmation after explaining that its size may exceed context "
+            "capacity and reduce review quality.",
+            "Stop before reviewing until confirmed.",
+            "If questions are unavailable, return the clarification request to the caller "
+            "instead of assuming consent.",
+            "Batch large review scopes by coherent responsibility.",
+            "Compare code within the review scope with relevant surrounding behavior.",
+            "File within the review scope and precise line/range at the reviewed revision.",
+            "For a changed-code review, use a changed file.",
+            "reviewed revision (base/head and comparison for changed-code reviews)",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                text = " ".join(path.read_text(encoding="utf-8").split())
+                description = validate_packages.frontmatter(path)[1]["description"]
+                self.assertIn("Review changed code by default", description)
+                self.assertIn("whole codebase after explicit request and confirmation", description)
+                for rule in required_rules:
+                    self.assertIn(rule, text)
+                self.assertNotIn("- Review changed code only.", text)
+                self.assertNotIn("- Changed file and precise line/range", text)
 
     def test_service_references_use_progressive_disclosure(self) -> None:
         source_root = ROOT / "plugins/hyperfocus-review/source"
@@ -295,15 +332,41 @@ class DryReviewerTests(unittest.TestCase):
         fixtures = validate_packages.load_yaml_mapping(
             ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
         )["cases"]
-        self.assertEqual(len(fixtures), 20)
-        self.assertEqual(len({case["id"] for case in fixtures}), 20)
+        self.assertEqual(len(fixtures), 22)
+        self.assertEqual(len({case["id"] for case in fixtures}), 22)
         for case in fixtures:
             with self.subTest(case=case["id"]):
                 self.assertTrue(case["request"].strip())
                 self.assertTrue(case["expected"].strip())
                 if "files" in case:
-                    self.assertTrue(case["diff"].strip())
+                    if case.get("review_scope") == "whole-codebase":
+                        self.assertTrue(case["revision"].strip())
+                        self.assertNotIn("diff", case)
+                    else:
+                        self.assertTrue(case["diff"].strip())
                     self.assertTrue(all(isinstance(value, str) for value in case["files"].values()))
+
+    def test_scope_fixtures_cover_confirmation_and_unchanged_evidence(self) -> None:
+        fixtures = {
+            case["id"]: case
+            for case in validate_packages.load_yaml_mapping(
+                ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
+            )["cases"]
+        }
+        unconfirmed = fixtures["whole-codebase-confirmation"]
+        self.assertNotIn("prior_messages", unconfirmed)
+        self.assertIn("do not start whole-codebase review before confirmation", unconfirmed["expected"])
+        confirmed = fixtures["whole-codebase-confirmed-no-diff"]
+        self.assertEqual([message["role"] for message in confirmed["prior_messages"]], ["user", "assistant"])
+        self.assertIn("entire repository", confirmed["prior_messages"][0]["content"])
+        self.assertIn("context capacity and reduce review quality", confirmed["prior_messages"][1]["content"])
+        self.assertTrue(confirmed["request"].startswith("Confirmed."))
+        self.assertIn("unchanged app.py lines 1-2", confirmed["expected"])
+        self.assertEqual(confirmed["files"]["app.py"], "def label_key(value):\n    return value.strip().casefold()\n")
+        boundary = fixtures["changed-code-scope-boundary"]
+        self.assertIn("unrelated.py", boundary["files"])
+        self.assertNotIn("unrelated.py", boundary["diff"])
+        self.assertIn("do not report unrelated unchanged unrelated.py", boundary["expected"])
 
     def test_rejects_policy_broadening_reordering_and_missing_rules(self) -> None:
         metadata = self.metadata("opencode")

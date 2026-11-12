@@ -8,9 +8,13 @@ on both OpenCode and Copilot CLI. Do not combine cases into one review.
 
 1. Use an isolated disposable project/home under `/tmp/opencode`. Copy the
    case's `files` into the project and supply its diff/request to the caller.
+   For `review_scope: whole-codebase`, supply the repository and `revision`
+   without a base or diff. Replay any `prior_messages` as conversation turns
+   before the final `request`, preserving the warning-before-confirmation order.
    These snippets are review evidence; do not execute or install them.
-2. Supply synthetic base/head revisions for offline cases. Tell the agent they
-   are fixture identifiers, not actual Git SHAs. For merge-base inspection,
+2. Supply synthetic base/head revisions for offline changed-code cases, or only
+   the reviewed revision for whole-codebase cases. Tell the agent these are
+   fixture identifiers, not actual Git SHAs. For merge-base inspection,
    create real local fixture commits and supply their actual revisions instead.
 3. Verify the installed agent is selected, including its prompt and target
    permissions. Record harness/model versions and which tools the subagent
@@ -24,12 +28,31 @@ on both OpenCode and Copilot CLI. Do not combine cases into one review.
    review-write tools against an arbitrary PR. If the harness cannot substitute
    tools, mark publication simulation NOT RUN rather than substituting a live PR.
 5. Compare the resulting report and trace with `expected`. Every finding must
-   cite the changed line, reuse source/API, behavior compatibility, and a concrete
-   recommendation. Reject new dependencies, unrelated findings, speculative
-   extraction, or silent coverage omissions.
+   cite an in-scope line at the reviewed revision (a changed line for changed-code
+   reviews; unchanged lines are allowed for confirmed whole-codebase reviews),
+   reuse source/API, behavior compatibility, and a concrete recommendation.
+   Reject new dependencies, unrelated findings, speculative extraction, or silent
+   coverage omissions.
 6. Record PASS/FAIL/NOT RUN for every case and target, along with the report,
    tool trace, findings, and mismatches. No string-matching unit test substitutes
    for this evaluation. Repeat failures after prompt changes.
+
+## Review scope cases
+
+- `whole-codebase-confirmation`: source and a revision are available, but no
+  confirmation follows the context-size/quality warning. Expect a clarification
+  request and no review or findings. Also run with questions unavailable and
+  expect the clarification request returned to the caller.
+- `whole-codebase-confirmed-no-diff`: replay the explicit request and warning,
+  then supply confirmation. Expect an evidenced finding in unchanged `app.py`
+  without a diff/base prerequisite. Do not mistake absence of a diff for absence
+  of reviewable code. Record coverage limits instead of claiming full coverage
+  when only part of the confirmed scope was inspected.
+- `changed-code-scope-boundary`: the unrelated unchanged duplication is not a
+  finding. Context gathering must not silently broaden the default review scope.
+
+Static contract tests check prompt wording and fixture structure only. They do
+not demonstrate that either target's model follows these scope decisions.
 
 ## Exploration and source-write cases
 

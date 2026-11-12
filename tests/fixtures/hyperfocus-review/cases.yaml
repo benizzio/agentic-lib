@@ -166,8 +166,55 @@ cases:
     expected: No cross-plugin import or speculative shared package; accept the intentional independent boundary.
 
   - id: whole-codebase-confirmation
+    review_scope: whole-codebase
+    revision: fixture-whole-codebase-head
     request: Review the entire repository for DRY issues.
+    files:
+      labels.py: |
+        def label_key(value):
+            return value.strip().casefold()
+        def search_key(value):
+            return value.strip().casefold()
     expected: Explain context-size/quality risk and request confirmation; do not start whole-codebase review before confirmation. Return the question to the caller if necessary.
+
+  - id: whole-codebase-confirmed-no-diff
+    review_scope: whole-codebase
+    revision: fixture-whole-codebase-head
+    prior_messages:
+      - role: user
+        content: Review the entire repository for DRY issues. Report only.
+      - role: assistant
+        content: A whole-codebase review may exceed context capacity and reduce review quality. Please confirm whether to proceed.
+    request: Confirmed. Review the whole repository at fixture-whole-codebase-head and report only. There is no diff; all supplied files are unchanged. Both label functions implement the same approved label-key policy. App may import shared.
+    files:
+      AGENTS.md: Use shared.labels.normalize_label for application label keys.
+      shared/labels.py: |
+        def normalize_label(value):
+            return value.strip().casefold()
+      app.py: |
+        def label_key(value):
+            return value.strip().casefold()
+    expected: Review without requiring a base or diff or asking for confirmation again. Report existing reuse at unchanged app.py lines 1-2, citing shared/labels.py lines 1-2 and the explicit repository convention. Recommend normalize_label with preserved strip/casefold semantics. State reviewed revision, whole-codebase scope, and any coverage limits.
+
+  - id: changed-code-scope-boundary
+    request: Review the supplied Python diff. Report only.
+    files:
+      greeting.py: |
+        def greeting(name):
+            return f"Hello, {name}"
+      unrelated.py: |
+        def label_key(value):
+            return value.strip().casefold()
+        def search_key(value):
+            return value.strip().casefold()
+    diff: |
+      --- a/greeting.py
+      +++ b/greeting.py
+      @@ -1,2 +1,2 @@
+       def greeting(name):
+      -    return f"Hi, {name}"
+      +    return f"Hello, {name}"
+    expected: No DRY/reuse findings. Keep findings within the changed-code scope; do not report unrelated unchanged unrelated.py duplication or request a whole-codebase review. Unchanged code may be inspected only as reuse context. State scope and coverage limits.
 
   - id: unavailable-publication
     request: Review fixture PR 123 and publish findings. Use standard-library case as its source/diff. No write tools are exposed and no CLI fallback has been approved.
