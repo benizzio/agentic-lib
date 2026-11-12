@@ -54,6 +54,18 @@ on both OpenCode and Copilot CLI. Do not combine cases into one review.
 Static contract tests check prompt wording and fixture structure only. They do
 not demonstrate that either target's model follows these scope decisions.
 
+## Utility classification cases
+
+- `language-extraction`: domain-independent list rotation has evidenced consumers
+  in both packages. Preserve list/empty-input behavior and package boundaries.
+- `infrastructure-extraction`: the shared logging adapter is domain-independent
+  despite its controller locations. Preserve the event schema and layer direction.
+- `domain-repetition`: repeated membership policy remains domain behavior under
+  section 4, not either utility category. Preserve the eligibility checks and keep
+  consolidation within the membership domain.
+
+These expected decisions are fixture assertions, not observed model results.
+
 ## Exploration and source-write cases
 
 Use disposable source and stub tools/commands only. Expose unfamiliar operations

@@ -83,7 +83,7 @@ cases:
       +        return []
       +    offset = count % len(values)
       +    return values[offset:] + values[:offset]
-    expected: Language utility extraction to shared/sequences.py if no equivalent available facility preserves list and empty-input behavior; no dependency between package_a and package_b.
+    expected: Language utility extraction to shared/sequences.py if no equivalent available facility preserves list and empty-input behavior. Rotation is unrelated to any application domain and demonstrably useful across package_a and package_b, not just outside its source unit; no dependency between the packages.
 
   - id: infrastructure-extraction
     request: Review only the added billing logging adapter. The repository uses this exact redaction and event schema in both controllers. Report only.
@@ -101,7 +101,7 @@ cases:
       @@ -0,0 +1,2 @@
       +def log_action(logger, actor, action):
       +    logger.info("action", extra={"actor_id": actor.id, "action": action})
-    expected: Infrastructure utility extraction with event-schema compatibility; no direct controller-to-controller import.
+    expected: Infrastructure utility extraction to infrastructure/events.py with event-schema compatibility. The logging adapter is unrelated to any application domain and demonstrably useful across the orders and billing modules; controller locations do not make it domain policy. No direct controller-to-controller import.
 
   - id: domain-repetition
     request: Review only the added renewal rule. Both functions implement the same approved membership policy. Report only.
@@ -119,7 +119,7 @@ cases:
            return member.active and member.balance >= 0 and not member.suspended
       +def can_renew(member):
       +    return member.active and member.balance >= 0 and not member.suspended
-    expected: Repeated domain behavior; recommend one shared membership eligibility rule, not a generic language utility package.
+    expected: Repeated domain behavior under section 4; recommend one shared membership eligibility rule with preserved active, balance, and suspended checks. Membership eligibility is application-domain policy, not a language or infrastructure utility, even though it repeats and could be called outside this source unit. Keep the abstraction within the membership domain.
 
   - id: semantic-difference
     request: Review the added stable deduplication. Input ordering and unhashable values must be preserved. Report only.

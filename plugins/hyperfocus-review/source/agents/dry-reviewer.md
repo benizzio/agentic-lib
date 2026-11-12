@@ -93,7 +93,9 @@ as relevant. Similar syntax is not evidence of interchangeable behavior.
 ## 3. Identify utility code when existing reuse is not possible
 
 Utility code is functionality generic enough for use outside its current source
-unit. Confirm that status before proposing extraction, and distinguish:
+unit, unrelated to any application domain, and useful for multiple modules or
+packages of the application. Confirm that status before proposing extraction,
+and distinguish:
 
 - **Language utility:** basic/generic operations extending language or type
   facilities, such as iterators, missing data structures, type transformations,

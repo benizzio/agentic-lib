@@ -268,6 +268,37 @@ class DryReviewerTests(unittest.TestCase):
                 self.assertNotIn("- Review changed code only.", text)
                 self.assertNotIn("- Changed file and precise line/range", text)
 
+    def test_utility_contract_requires_domain_independent_usefulness(self) -> None:
+        # Static prompt regressions only; these do not exercise model decisions.
+        source = ROOT / "plugins/hyperfocus-review/source/agents/dry-reviewer.md"
+        paths = [source] + [
+            package.root / ".apm/agents/dry-reviewer.agent.md"
+            for package in self.packages.values()
+        ]
+        required_rules = (
+            "Utility code is functionality generic enough for use outside its current "
+            "source unit, unrelated to any application domain, and useful for multiple "
+            "modules or packages of the application.",
+            "Confirm that status before proposing extraction",
+            "**Language utility:** basic/generic operations extending language or type facilities",
+            "**Infrastructure utility:** operations generic within the adopted stack",
+            "Single use alone neither proves nor rules out utility status; require a "
+            "demonstrably generic responsibility and a useful boundary, not imagined future consumers.",
+            "Respect intentional wrappers, domain adapters, and layer separation.",
+            "## 4. Check repeated non-utility behavior and simplify",
+            "Recommend consolidation only for the same responsibility when behavior is "
+            "preserved and the abstraction is simpler than duplication.",
+            "Reject suggestions that introduce coupling, cycles, speculative generality, "
+            "or obscure distinct domain rules.",
+            "Similar syntax is not evidence of interchangeable behavior.",
+            "Relevant compatibility considerations and why behavior is preserved.",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                text = " ".join(path.read_text(encoding="utf-8").split())
+                for rule in required_rules:
+                    self.assertIn(rule, text)
+
     def test_service_references_use_progressive_disclosure(self) -> None:
         source_root = ROOT / "plugins/hyperfocus-review/source"
         body = (source_root / "agents/dry-reviewer.md").read_text(encoding="utf-8")
@@ -367,6 +398,33 @@ class DryReviewerTests(unittest.TestCase):
         self.assertIn("unrelated.py", boundary["files"])
         self.assertNotIn("unrelated.py", boundary["diff"])
         self.assertIn("do not report unrelated unchanged unrelated.py", boundary["expected"])
+
+    def test_utility_fixtures_distinguish_generic_operations_from_domain_policy(self) -> None:
+        fixtures = {
+            case["id"]: case
+            for case in validate_packages.load_yaml_mapping(
+                ROOT / "tests/fixtures/hyperfocus-review/cases.yaml"
+            )["cases"]
+        }
+        for case_id, location, consumers, compatibility in (
+            ("language-extraction", "shared/sequences.py", "package_a and package_b", "list and empty-input behavior"),
+            ("infrastructure-extraction", "infrastructure/events.py", "orders and billing modules", "event-schema compatibility"),
+        ):
+            with self.subTest(case=case_id):
+                expected = fixtures[case_id]["expected"]
+                self.assertIn("unrelated to any application domain", expected)
+                self.assertIn("demonstrably useful across", expected)
+                for evidence in (location, consumers, compatibility):
+                    self.assertIn(evidence, expected)
+        domain = fixtures["domain-repetition"]["expected"]
+        for rule in (
+            "Repeated domain behavior under section 4",
+            "preserved active, balance, and suspended checks",
+            "not a language or infrastructure utility",
+            "even though it repeats and could be called outside this source unit",
+            "Keep the abstraction within the membership domain",
+        ):
+            self.assertIn(rule, domain)
 
     def test_rejects_policy_broadening_reordering_and_missing_rules(self) -> None:
         metadata = self.metadata("opencode")
