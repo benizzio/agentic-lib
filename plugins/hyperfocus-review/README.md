@@ -25,9 +25,10 @@ The OpenCode package requires OpenCode 2.1.4 or later.
 
 - **OpenCode:** direct edits and nested delegation are denied. Code Mode is
   enabled for tool orchestration; MCP servers need not set `codemode: false`.
-  Shell commands and unfamiliar tool actions require approval, rather than a
-  hardcoded command/tool allowlist. Existing read-only documentation and review
-  inspection integrations remain allowed. Nested tools retain their permissions.
+  Shell commands, unfamiliar tool actions, external directories, and review
+  tools are allowed without routine approval by this profile. The broad rule
+  also covers newly exposed tools. Later consuming-configuration rules and
+  nested tools may impose their own restrictions.
 - **Copilot CLI:** the profile includes `execute` for shell commands alongside
   reading, searching, web access, and the existing review integrations. It omits
   editing and delegation tools. Shell approval is controlled by the consuming
@@ -42,8 +43,10 @@ availability. Permission does not provision tools or a web-search integration.
 Existing review/documentation MCP mappings assume server names `github` and
 `context7`; adapt them in the consuming configuration if needed. Verify the
 tools actually exposed to the installed subagent, not merely its parent.
-Review-write approvals are tool-level and cannot restrict method/event arguments;
-inspect approvals rather than granting broad permanent permissions.
+OpenCode review-write permissions are tool-level and cannot restrict method or
+event arguments. The prompt's publication safeguards are cooperative, not
+enforced by those permissions. Shell and Code Mode can modify source despite
+direct-edit denials; strict protection requires external read-only enforcement.
 
 ## Publication discovery
 
@@ -60,8 +63,8 @@ comparison before publication and submission, and safe invocation-owned review
 ID binding for later mutations. Existing pending state stops publication. An
 operation selecting only the current user's pending review is not safe ID binding.
 Use only an explicitly authorized equivalent operation or return the full report.
-Alternative transports require explicit authorization separate from command
-approval; never search for credentials or silently switch transports.
+Alternative transports require explicit authorization separate from permission
+to run a command; never search for credentials or silently switch transports.
 
 Findings are added sequentially at valid anchors; unanchorable findings go in the
 summary. Partial or ambiguous failures require state inspection and an accurate

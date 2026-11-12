@@ -25,7 +25,7 @@ DEEP_RESEARCH_OPENCODE_EDIT_RULES = (("*", "deny"), ("*.json", "allow"))
 DEEP_RESEARCH_OPENCODE_BASH_RULES = (("*", "deny"), ("date *", "allow"))
 DEEP_RESEARCH_COPILOT_TOOLS = ["read", "edit", "search", "web"]
 DRY_REVIEWER_OPENCODE_RULES = [
-    ("*", "*", "ask"),
+    ("*", "*", "allow"),
     ("read", "*", "allow"),
     ("read", "*.env", "deny"),
     ("read", "*.env.*", "deny"),
@@ -38,15 +38,15 @@ DRY_REVIEWER_OPENCODE_RULES = [
     ("edit", "*", "deny"),
     ("subagent", "*", "deny"),
     ("execute", "*", "allow"),
-    ("shell", "*", "ask"),
-    ("external_directory", "*", "ask"),
+    ("shell", "*", "allow"),
+    ("external_directory", "*", "allow"),
     ("context7_resolve_library_id", "*", "allow"),
     ("context7_query_docs", "*", "allow"),
     ("github_get_me", "*", "allow"),
     ("github_get_file_contents", "*", "allow"),
     ("github_pull_request_read", "*", "allow"),
-    ("github_pull_request_review_write", "*", "ask"),
-    ("github_add_comment_to_pending_review", "*", "ask"),
+    ("github_pull_request_review_write", "*", "allow"),
+    ("github_add_comment_to_pending_review", "*", "allow"),
 ]
 DRY_REVIEWER_COPILOT_TOOLS = [
     "read", "search", "web", "execute", "context7/resolve-library-id", "context7/query-docs",

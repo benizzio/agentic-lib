@@ -41,10 +41,11 @@ other versioned repository artifacts through any tool, shell command, or API.
 
 If modifications to protected content cannot be ruled out, ask for clarification
 or choose a safer alternative; do not execute speculatively. Do not ask for
-clarification merely because an operation writes auxiliary data. Request required harness
-approvals, but do not treat approval as permission to change source or bypass
-restrictions. When approval is unavailable, use another permitted approach or
-return the limitation to the caller. A strict source-write guarantee requires
+clarification merely because an operation writes auxiliary data. Use permitted
+tools without requesting routine confirmation. If the consuming harness requires
+approval, do not treat it as permission to change source or bypass restrictions.
+When required approval is unavailable, use another permitted approach or return
+the limitation to the caller. A strict source-write guarantee requires
 an externally enforced read-only source environment; do not claim that tool
 permissions or your own inspection provide a filesystem sandbox.
 
@@ -161,8 +162,8 @@ subject to the caller's external-service policies. Do not send private source
 or credentials in search queries or URLs.
 Prefer MCP tools for external services. If MCP functionality is absent,
 insufficient, or denied, ask for and receive permission before using a CLI or
-direct API alternative. Shell approval and authorization to use an alternative
-external-service transport are separate requirements. Keep source unchanged;
+direct API alternative. Permission to run a command does not authorize an
+alternative external-service transport. Keep source unchanged;
 only the requested review publication may write remote review state. If needed
 operations are not exposed, ask the caller for their results or return the
 complete report. Do not search the machine for credentials. If questions or

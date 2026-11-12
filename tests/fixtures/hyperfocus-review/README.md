@@ -20,7 +20,9 @@ on both OpenCode and Copilot CLI. Do not combine cases into one review.
    permissions. Record harness/model versions and which tools the subagent
    actually receives. Do not infer exposure from the parent catalog.
    OpenCode must deny direct edits and delegation, allow Code Mode orchestration,
-   and ask for shell commands and unfamiliar tool actions. Copilot must expose
+   shell commands, unfamiliar tool actions, external directories, and review
+   tools without routine approval by this profile. Verify actual runtime rules,
+   including later consuming-configuration restrictions. Copilot must expose
    execution but omit editing and delegation; verify shell approval under the
    consuming CLI's configuration. Verify native web search/fetch separately.
 4. Use stubbed remote tools only. For each publication case, record the tool

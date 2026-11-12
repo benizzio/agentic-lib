@@ -368,14 +368,11 @@ class DryReviewerTests(unittest.TestCase):
     def test_execution_and_tool_discovery_require_appropriate_permissions(self) -> None:
         metadata = self.metadata("opencode")
         rules = metadata["permissions"]
-        self.assertEqual(rules[0], {"action": "*", "resource": "*", "effect": "ask"})
-        self.assertIn({"action": "execute", "resource": "*", "effect": "allow"}, rules)
-        self.assertIn({"action": "shell", "resource": "*", "effect": "ask"}, rules)
-        self.assertFalse(any(
-            "*" in rule["action"] and rule["effect"] == "allow"
-            for rule in rules
-        ))
-        for action, effect in (("*", "allow"), ("*", "deny"), ("shell", "allow"), ("shell", "deny"), ("execute", "deny")):
+        self.assertEqual(rules[0], {"action": "*", "resource": "*", "effect": "allow"})
+        for action in ("execute", "shell", "external_directory", "github_pull_request_review_write", "github_add_comment_to_pending_review"):
+            self.assertIn({"action": action, "resource": "*", "effect": "allow"}, rules)
+        self.assertFalse(any(rule["effect"] == "ask" for rule in rules))
+        for action, effect in (("*", "ask"), ("*", "deny"), ("shell", "ask"), ("shell", "deny"), ("execute", "deny")):
             with self.subTest(action=action, effect=effect):
                 modified = [
                     {**rule, "effect": effect} if rule["action"] == action else rule
@@ -474,15 +471,15 @@ class DryReviewerTests(unittest.TestCase):
         ):
             self.assertIn(rule, domain)
 
-    def test_rejects_policy_broadening_reordering_and_missing_rules(self) -> None:
+    def test_rejects_policy_changes_reordering_and_missing_rules(self) -> None:
         metadata = self.metadata("opencode")
         rules = metadata["permissions"]
         mutations = [
             rules[1:],
             list(reversed(rules)),
             rules + [{"action": "edit", "resource": "*", "effect": "allow"}],
-            [{**rule, "effect": "allow"} if rule["action"] == "shell" else rule for rule in rules],
-            [{**rule, "effect": "allow"} if rule["action"] == "github_pull_request_review_write" else rule for rule in rules],
+            [{**rule, "effect": "ask"} if rule["action"] == "shell" else rule for rule in rules],
+            [{**rule, "effect": "ask"} if rule["action"] == "github_pull_request_review_write" else rule for rule in rules],
             [{**rule, "extra": True} for rule in rules],
             {},
         ]
