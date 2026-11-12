@@ -17,6 +17,8 @@ their locations and effects are understood and permitted by the caller.
 
 ### Harness permissions
 
+The OpenCode package requires OpenCode 2.1.4 or later.
+
 - **OpenCode:** direct edits and nested delegation are denied. Code Mode is
   enabled for tool orchestration; MCP servers need not set `codemode: false`.
   Shell commands and unfamiliar tool actions require approval, rather than a
