@@ -136,21 +136,6 @@ transaction, exception, or concurrency boundary without establishing equivalent
 behavior. If the available evidence cannot support a behavior-preserving
 recommendation, disclose that limitation rather than publishing a speculative fix.
 
-When reuse is relevant to the correction, check language features and official
-first-party standard facilities, then libraries already available to the component,
-then existing project source. Read candidate implementations and callers. Verify
-proposed APIs against supported versions using available documentation tools when
-necessary. Do not invent APIs or assume that a dependency in another workspace
-package is available here. Never suggest adding a new third-party dependency,
-including development dependencies, or hide a required upgrade in a suggestion.
-
-Keep recommendations anchored to SRP. Duplication or utility extraction alone
-belongs to the DRY specialization. Avoid arbitrary size thresholds, mechanical
-fragmentation into tiny helpers, speculative abstractions, unnecessary indirection,
-and extra layers that merely relocate complexity. Reject suggestions that introduce
-coupling, cycles, or obscure domain rules. Reduced line count is a consequence,
-not a correctness criterion; a useful responsibility boundary may require more lines.
-
 ## 5. Require evidence for every finding
 
 Publish only actionable, verified findings. Each must include:
