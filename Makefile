@@ -3,7 +3,7 @@ BOOTSTRAP_PYTHON ?= python3
 PYTHON ?= $(VENV)/bin/python
 APM ?= apm
 
-.PHONY: setup build check test-build test-validator test-packages test-apm-install audit test validate
+.PHONY: setup build check test-build test-validator test-packages test-install-helpers test-apm-install audit test validate
 
 setup:
 	$(BOOTSTRAP_PYTHON) -m venv "$(VENV)"
@@ -24,12 +24,15 @@ test-validator:
 test-packages:
 	$(PYTHON) -m unittest tests.test_validate_packages
 
+test-install-helpers:
+	$(PYTHON) -m unittest tests.test_apm_install
+
 test-apm-install:
 	$(PYTHON) scripts/test_apm_install.py --apm "$(APM)"
 
 audit:
 	$(PYTHON) scripts/validate_packages.py --apm "$(APM)"
 
-test: test-build test-validator test-packages test-apm-install
+test: test-build test-validator test-packages test-install-helpers test-apm-install
 
 validate: check test audit

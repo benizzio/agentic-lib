@@ -1,0 +1,12 @@
+# Generated; do not edit.
+name: hyperfocus-review-copilot
+version: "0.1.4"
+description: Focused code review agents for DRY, reuse, and utility extraction for copilot.
+author: benizzio
+license: MIT
+dependencies:
+  apm: []
+  mcp: []
+includes:
+- .apm/agents/
+scripts: {}

@@ -94,6 +94,42 @@ class BuilderTestCase(unittest.TestCase):
         self.assertEqual([item.name for item in plugins], ["example"])
         self.assertEqual([item.name for item in plugins[0].targets], ["alpha"])
 
+    def test_agent_only_plugin_alongside_existing_plugin(self) -> None:
+        plugin = self.root / "plugins" / "review"
+        (plugin / "targets").mkdir(parents=True)
+        (plugin / "source").mkdir()
+        (plugin / "plugin.yml").write_text(
+            PLUGIN.split("  - source: source/skills/")[0], encoding="utf-8"
+        )
+        (plugin / "source" / "agent.md").write_text(
+            "---\nname: reviewer\ndescription: Review only.\n---\nReview body.\n",
+            encoding="utf-8",
+        )
+        for target in ("alpha", "beta"):
+            (plugin / "targets" / f"{target}.yml").write_text(
+                TARGET.replace("example-", "review-").replace("alpha", target).replace("    shared: null\n", ""),
+                encoding="utf-8",
+            )
+        plugins = build.discover_plugins(self.root)
+        self.assertEqual([item.name for item in plugins], ["example", "review"])
+        files = self.generated()
+        self.assertEqual(files, self.generated())
+        for target in ("alpha", "beta"):
+            prefix = f"review/{target}/"
+            paths = {str(path) for path in files if str(path).startswith(prefix)}
+            self.assertEqual(paths, {prefix + "apm.yml", prefix + ".apm/agents/example.agent.md"})
+            manifest = files[build.PurePosixPath(prefix + "apm.yml")]
+            self.assertIn(b'version: "1.2.3"', manifest)
+            self.assertIn(f"name: review-{target}".encode(), manifest)
+            self.assertIn(b"- .apm/agents/", manifest)
+            self.assertNotIn(b".apm/skills/", manifest)
+            metadata, body = build._load_frontmatter(
+                build.PurePosixPath("agent.md"),
+                files[build.PurePosixPath(prefix + ".apm/agents/example.agent.md")],
+            )
+            self.assertEqual(metadata["tools"], ["read"])
+            self.assertEqual(body, "Review body.\n")
+
     def test_generation_is_deterministic_and_normalized(self) -> None:
         first = self.generated()
         second = self.generated()

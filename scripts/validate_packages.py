@@ -24,6 +24,35 @@ COMMAND_TIMEOUT_SECONDS = 60
 DEEP_RESEARCH_OPENCODE_EDIT_RULES = (("*", "deny"), ("*.json", "allow"))
 DEEP_RESEARCH_OPENCODE_BASH_RULES = (("*", "deny"), ("date *", "allow"))
 DEEP_RESEARCH_COPILOT_TOOLS = ["read", "edit", "search", "web"]
+DRY_REVIEWER_OPENCODE_RULES = [
+    ("*", "*", "allow"),
+    ("read", "*", "allow"),
+    ("read", "*.env", "deny"),
+    ("read", "*.env.*", "deny"),
+    ("read", "*.env.example", "allow"),
+    ("glob", "*", "allow"),
+    ("grep", "*", "allow"),
+    ("websearch", "*", "allow"),
+    ("webfetch", "*", "allow"),
+    ("question", "*", "allow"),
+    ("edit", "*", "deny"),
+    ("subagent", "*", "deny"),
+    ("execute", "*", "allow"),
+    ("shell", "*", "allow"),
+    ("external_directory", "*", "allow"),
+    ("context7_resolve_library_id", "*", "allow"),
+    ("context7_query_docs", "*", "allow"),
+    ("github_get_me", "*", "allow"),
+    ("github_get_file_contents", "*", "allow"),
+    ("github_pull_request_read", "*", "allow"),
+    ("github_pull_request_review_write", "*", "allow"),
+    ("github_add_comment_to_pending_review", "*", "allow"),
+]
+DRY_REVIEWER_COPILOT_TOOLS = [
+    "read", "search", "web", "execute", "context7/resolve-library-id", "context7/query-docs",
+    "github/get_me", "github/get_file_contents", "github/pull_request_read",
+    "github/pull_request_review_write", "github/add_comment_to_pending_review",
+]
 
 
 class ValidationError(Exception):
@@ -187,6 +216,25 @@ def _run(command: list[str], cwd: Path) -> str | None:
 def agent_capability_errors(
     package: Package, agent: Path, metadata: dict[str, Any]
 ) -> list[str]:
+    if package.plugin == "hyperfocus-review":
+        errors = []
+        if metadata.get("name") != "dry-reviewer":
+            errors.append(f"{agent}: Hyperfocus Review agent name must be dry-reviewer")
+        if "model" in metadata:
+            errors.append(f"{agent}: dry-reviewer must not pin a model")
+        if package.target == "opencode":
+            expected = [
+                {"action": action, "resource": resource, "effect": effect}
+                for action, resource, effect in DRY_REVIEWER_OPENCODE_RULES
+            ]
+            if metadata.get("permissions") != expected:
+                errors.append(f"{agent}: dry-reviewer must use the ordered review-only OpenCode policy")
+        elif package.target == "copilot":
+            if metadata.get("tools") != DRY_REVIEWER_COPILOT_TOOLS:
+                errors.append(f"{agent}: dry-reviewer must use the explicit Copilot review tools")
+            if metadata.get("include-custom-instructions") is not True:
+                errors.append(f"{agent}: dry-reviewer must include repository instructions")
+        return errors
     if package.plugin != "deep-research" or metadata.get("name") != "web-search-agent":
         return []
 
@@ -213,6 +261,35 @@ def agent_capability_errors(
             f"{DEEP_RESEARCH_COPILOT_TOOLS!r}"
         ]
     return []
+
+
+def agent_frontmatter_errors(
+    package: Package, agent: Path, metadata: dict[str, Any]
+) -> list[str]:
+    errors = []
+    if package.target == "opencode":
+        if metadata.get("mode") != "subagent":
+            errors.append(f"{agent}: OpenCode agent mode must be 'subagent'")
+        if package.plugin == "hyperfocus-review":
+            if not isinstance(metadata.get("permissions"), list):
+                errors.append(f"{agent}: OpenCode agent permissions must be a rule list")
+            if "permission" in metadata:
+                errors.append(f"{agent}: OpenCode reviewer must not contain legacy permission")
+        elif not isinstance(metadata.get("permission"), dict):
+            errors.append(f"{agent}: OpenCode agent permission must be a mapping")
+        if "tools" in metadata or "include-custom-instructions" in metadata:
+            errors.append(f"{agent}: OpenCode agent must not contain Copilot fields")
+    elif package.target == "copilot":
+        tools = metadata.get("tools")
+        if not isinstance(tools, list) or not tools or not all(
+            isinstance(tool, str) for tool in tools
+        ):
+            errors.append(f"{agent}: Copilot tools must be a non-empty string list")
+        forbidden = sorted({"permission", "permissions", "mode", "temperature"} & metadata.keys())
+        if forbidden:
+            errors.append(f"{agent}: Copilot agent contains OpenCode fields: {', '.join(forbidden)}")
+    errors.extend(agent_capability_errors(package, agent, metadata))
+    return errors
 
 
 def _content_checks(package: Package, repo_root: Path) -> list[str]:
@@ -276,23 +353,7 @@ def _content_checks(package: Package, repo_root: Path) -> list[str]:
         except ValidationError as error:
             errors.append(str(error))
             continue
-        if package.target == "opencode":
-            if metadata.get("mode") != "subagent":
-                errors.append(f"{agent}: OpenCode agent mode must be 'subagent'")
-            if not isinstance(metadata.get("permission"), dict):
-                errors.append(f"{agent}: OpenCode agent permission must be a mapping")
-            if "tools" in metadata:
-                errors.append(f"{agent}: OpenCode agent must not contain Copilot tools")
-        elif package.target == "copilot":
-            tools = metadata.get("tools")
-            if not isinstance(tools, list) or not tools or not all(
-                isinstance(tool, str) for tool in tools
-            ):
-                errors.append(f"{agent}: Copilot tools must be a non-empty string list")
-            forbidden = sorted({"permission", "mode", "temperature"} & metadata.keys())
-            if forbidden:
-                errors.append(f"{agent}: Copilot agent contains OpenCode fields: {', '.join(forbidden)}")
-        errors.extend(agent_capability_errors(package, agent, metadata))
+        errors.extend(agent_frontmatter_errors(package, agent, metadata))
     return errors
 
 

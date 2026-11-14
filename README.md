@@ -6,7 +6,7 @@ Portable agent artifacts packaged with
 ## Prerequisites
 
 - [Microsoft APM](https://microsoft.github.io/apm/getting-started/installation/)
-  `v0.29.1` installed and available on `PATH`.
+  `v0.35.0` installed and available on `PATH`.
 - Python 3.10 or newer with the standard-library `venv` module for maintaining
   the repository.
 
@@ -52,6 +52,10 @@ draft, and adds an issue-closing reference when the related issue is known.
 
 ### Plugin Packages
 
+#### Hyperfocus Review
+
+UNDER DESIGN, DEVELOPMENT AND EXPERIMENTATION!
+
 #### Deep Research
 
 An adapted fork of
@@ -78,7 +82,7 @@ apm install benizzio/agentic-lib/packages/plugins/deep-research/copilot --target
 ```
 
 Add `--global` to the Copilot command for a user-scope installation. For a
-global OpenCode installation with APM `v0.29.1`, install the shared skills and
+global OpenCode installation with APM `v0.35.0`, install the shared skills and
 OpenCode agent separately:
 
 ```bash
@@ -103,7 +107,7 @@ skill will run. For a project installation:
 python3 -m pip install -r .agents/skills/research/requirements.txt
 ```
 
-For a global OpenCode installation with APM `v0.29.1`:
+For a global OpenCode installation with APM `v0.35.0`:
 
 ```bash
 python3 -m pip install -r ~/.agents/skills/research/requirements.txt
@@ -192,7 +196,7 @@ apm compile --global
 The install command stages the package under `~/.apm/` and deploys its skills
 under `~/.agents/skills/`. The dry run previews compilation without writing
 files, and the final command writes the APM-managed
-`~/.config/opencode/AGENTS.md`. APM `v0.29.1` reads the global manifest's
+`~/.config/opencode/AGENTS.md`. APM `v0.35.0` reads the global manifest's
 `targets:` declaration, so an OpenCode-only manifest does not create context
 files for unrelated harnesses.
 
@@ -210,7 +214,8 @@ apm compile --global
 
 APM does not overwrite a hand-authored `~/.config/opencode/AGENTS.md`.
 Incorporate its required content into the packaged instruction, back it up,
-remove it, and then compile. Restart OpenCode after the generated file changes.
+remove it, and then compile. OpenCode V2 reloads configuration after a save;
+use `/reload` if a forced reload is needed.
 
 ### Install All Skills
 
@@ -349,7 +354,8 @@ environment or interpreter is required.
 
 `make check` is read-only and fails if committed packages are missing, changed,
 or stale. `make validate` additionally runs builder and validator unit tests,
-APM audits and dry packs, and real project/global installs with APM `v0.29.1`.
+install-helper tests, APM audits and dry packs, and real project/global installs
+with APM `v0.35.0`.
 APM does not invoke this repository's builder during installation.
 
 To live-test a pushed feature branch, append `#<branch>` after the package

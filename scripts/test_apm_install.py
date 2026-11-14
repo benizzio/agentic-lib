@@ -19,14 +19,14 @@ from validate_packages import (
     Package,
     REPO_ROOT,
     ValidationError,
-    agent_capability_errors,
+    agent_frontmatter_errors,
     discover_packages,
     frontmatter,
     load_yaml_mapping,
 )
 
 
-REQUIRED_APM_VERSION = "0.29.1"
+REQUIRED_APM_VERSION = "0.35.0"
 GLOBAL_INSTRUCTION = (
     REPO_ROOT / ".apm" / "instructions" / "global-AGENTS.instructions.md"
 )
@@ -112,36 +112,35 @@ def expected_paths(package: Package, scope: str) -> set[Path]:
     layout = TARGET_LAYOUTS.get(package.target)
     if layout is None:
         raise ValidationError(f"unsupported APM install target for path assertions: {package.target}")
-    skill_root = layout[f"{scope}_skills"]
-    skill_files = sorted((package.root / ".apm" / "skills").glob("**/*"))
-    configured.update(
-        skill_root / path.relative_to(package.root / ".apm" / "skills")
-        for path in skill_files
-        if path.is_file()
-    )
-    agent_root = layout[f"{scope}_agents"]
+    configured.update(installed_skill_files(package, scope))
+    configured.update(installed_agents(package, scope))
+    return configured
+
+
+def installed_agents(package: Package, scope: str) -> dict[Path, Path]:
+    layout = TARGET_LAYOUTS[package.target]
+    agents = {}
     for source in sorted((package.root / ".apm" / "agents").glob("*.md")):
         name = source.name
         if layout["rename_agent"] and name.endswith(".agent.md"):
             name = name[: -len(".agent.md")] + ".md"
-        configured.add(agent_root / name)
-    return configured
+        agents[layout[f"{scope}_agents"] / name] = source
+    return agents
+
+
+def installed_skill_files(package: Package, scope: str) -> dict[Path, Path]:
+    source_root = package.root / ".apm" / "skills"
+    destination_root = TARGET_LAYOUTS[package.target][f"{scope}_skills"]
+    return {
+        destination_root / source.relative_to(source_root): source
+        for source in sorted(source_root.rglob("*"))
+        if source.is_file()
+    }
 
 
 def assert_frontmatter(package: Package, agent: Path) -> None:
     _, metadata = frontmatter(agent)
-    if package.target == "opencode":
-        if metadata.get("mode") != "subagent" or not isinstance(metadata.get("permission"), dict):
-            raise ValidationError(f"{agent}: installed OpenCode frontmatter is incompatible")
-        if "tools" in metadata:
-            raise ValidationError(f"{agent}: installed OpenCode agent contains Copilot tools")
-    elif package.target == "copilot":
-        tools = metadata.get("tools")
-        if not isinstance(tools, list) or not all(isinstance(item, str) for item in tools):
-            raise ValidationError(f"{agent}: installed Copilot tools are not a string list")
-        if {"mode", "permission", "temperature"} & metadata.keys():
-            raise ValidationError(f"{agent}: installed Copilot agent contains OpenCode fields")
-    capability_errors = agent_capability_errors(package, agent, metadata)
+    capability_errors = agent_frontmatter_errors(package, agent, metadata)
     if capability_errors:
         raise ValidationError("; ".join(capability_errors))
 
@@ -155,17 +154,20 @@ def assert_install(package: Package, root: Path, scope: str) -> None:
         )
     layout = TARGET_LAYOUTS[package.target]
     agent_root = root / layout[f"{scope}_agents"]
-    agents = sorted(agent_root.glob("*.md")) if agent_root.exists() else []
-    expected_agent_count = len(list((package.root / ".apm" / "agents").glob("*.md")))
-    if len(agents) != expected_agent_count:
+    agents = sorted(agent_root.rglob("*.md")) if agent_root.exists() else []
+    expected = installed_agents(package, scope)
+    if {path.relative_to(root) for path in agents} != set(expected):
         raise ValidationError(
-            f"{agent_root}: expected {expected_agent_count} agents, found {len(agents)}"
+            f"{agent_root}: installed agent set differs from expected {sorted(expected)}"
         )
-    web_search_agents = [path for path in agents if path.name.startswith("web-search")]
-    if len(web_search_agents) != 1:
-        raise ValidationError(f"{agent_root}: expected exactly one web-search agent")
     for agent in agents:
         assert_frontmatter(package, agent)
+        source = expected[agent.relative_to(root)]
+        if agent.read_bytes() != source.read_bytes():
+            raise ValidationError(f"{agent}: deployed agent differs from package source")
+    for destination, source in installed_skill_files(package, scope).items():
+        if (root / destination).read_bytes() != source.read_bytes():
+            raise ValidationError(f"{root / destination}: deployed skill file differs from package source")
     other = root / layout[f"other_{scope}"]
     if other.exists():
         raise ValidationError(f"{other}: other target's agent directory was created")
@@ -176,6 +178,9 @@ def assert_install(package: Package, root: Path, scope: str) -> None:
     if standalone_modules & {path.name for path in agents}:
         raise ValidationError(f"{agent_root}: modules were installed as standalone agents")
     if package.plugin == "deep-research":
+        web_search_agents = [path for path in agents if path.name.startswith("web-search")]
+        if len(web_search_agents) != 1:
+            raise ValidationError(f"{agent_root}: expected exactly one web-search agent")
         skills_root = root / layout[f"{scope}_skills"]
         installed_skills = {
             path.parent.name for path in skills_root.glob("*/SKILL.md")
@@ -255,11 +260,44 @@ def run_validator_regressions(skills_root: Path, cwd: Path, env: dict[str, str])
 
 
 def temp_parent(repo_root: Path) -> Path:
-    candidates = [Path("/tmp"), Path(tempfile.gettempdir()).resolve()]
+    candidates = [Path("/tmp/opencode"), Path(tempfile.gettempdir()).resolve()]
     for candidate in candidates:
         if candidate.is_dir() and not candidate.resolve().is_relative_to(repo_root.resolve()):
             return candidate
     raise ValidationError("no temporary directory outside the repository is available")
+
+
+def isolated_env(home: Path) -> dict[str, str]:
+    return {
+        **os.environ,
+        "HOME": str(home),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+        "XDG_CACHE_HOME": str(home / ".cache"),
+        "XDG_DATA_HOME": str(home / ".local" / "share"),
+    }
+
+
+def global_install_commands(apm: str, package: Package, temp: Path) -> tuple[list[str], ...]:
+    package_path = str(package.root.resolve())
+    if package.target != "opencode" or not (package.root / ".apm" / "skills").is_dir():
+        return ([apm, "install", package_path, "--target", package.target, "--global"],)
+    # Keep shared skills in ~/.agents/skills instead of APM's OpenCode-specific
+    # global skill directory. Install agents through a separate, skill-free package.
+    agent_package = temp / "opencode-agent-package"
+    for source in (package.root / ".apm" / "agents").glob("*.md"):
+        destination = agent_package / ".apm" / "agents" / source.name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+    manifest = load_yaml_mapping(package.root / "apm.yml")
+    manifest["name"] += "-agents"
+    manifest["includes"] = [".apm/agents/"]
+    (agent_package / "apm.yml").write_text(
+        yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
+    )
+    return (
+        [apm, "install", package_path, "--target", "agent-skills", "--global"],
+        [apm, "install", str(agent_package), "--target", "opencode", "--global"],
+    )
 
 
 def test_package(apm: str, package: Package, parent: Path) -> None:
@@ -273,58 +311,40 @@ def test_package(apm: str, package: Package, parent: Path) -> None:
             path.mkdir()
         package_path = str(package.root.resolve())
 
-        project_env = os.environ.copy()
-        project_env["HOME"] = str(project_home)
-        require_success(
-            [apm, "install", package_path, "--target", package.target], project, project_env
-        )
+        project_env = isolated_env(project_home)
+        project_command = [apm, "install", package_path, "--target", package.target]
+        require_success(project_command, project, project_env)
         require_success([apm, "audit", "--ci"], project, project_env)
         assert_install(package, project, "project")
-        project_skills = project / TARGET_LAYOUTS[package.target]["project_skills"]
-        run_validator_regressions(project_skills, project, project_env)
+        project_before = {
+            path: (project / path).read_bytes()
+            for path in expected_paths(package, "project")
+        }
+        require_success(project_command, project, project_env)
+        assert_install(package, project, "project")
+        if any((project / path).read_bytes() != data for path, data in project_before.items()):
+            raise ValidationError("project install is not idempotent")
+        if package.plugin == "deep-research":
+            project_skills = project / TARGET_LAYOUTS[package.target]["project_skills"]
+            run_validator_regressions(project_skills, project, project_env)
 
-        global_env = os.environ.copy()
-        global_env["HOME"] = str(global_home)
-        if package.target == "opencode":
-            agent_package = temp / "opencode-agent-package"
-            agent_source = package.root / ".apm" / "agents" / "web-search.agent.md"
-            agent_destination = agent_package / ".apm" / "agents" / agent_source.name
-            agent_destination.parent.mkdir(parents=True)
-            shutil.copy2(agent_source, agent_destination)
-            (agent_package / "apm.yml").write_text(
-                "name: deep-research-opencode-agent\n"
-                "version: 0.0.0\n"
-                "dependencies:\n"
-                "  apm: []\n"
-                "  mcp: []\n"
-                "includes:\n"
-                "  - .apm/agents/\n"
-                "scripts: {}\n",
-                encoding="utf-8",
-            )
-            global_commands = (
-                [apm, "install", package_path, "--target", "agent-skills", "--global"],
-                [apm, "install", str(agent_package), "--target", "opencode", "--global"],
-            )
-        else:
-            global_commands = (
-                [apm, "install", package_path, "--target", package.target, "--global"],
-            )
+        global_env = isolated_env(global_home)
+        global_commands = global_install_commands(apm, package, temp)
         for command in global_commands:
             require_success(command, global_work, global_env)
-        if package.target == "opencode":
-            deployed_before = {
-                path: (global_home / path).read_bytes()
-                for path in expected_paths(package, "global")
-            }
-            for command in global_commands:
-                require_success(command, global_work, global_env)
-            deployed_after = {
-                path: (global_home / path).read_bytes()
-                for path in expected_paths(package, "global")
-            }
-            if deployed_after != deployed_before:
-                raise ValidationError("OpenCode global install is not idempotent")
+        assert_install(package, global_home, "global")
+        deployed_before = {
+            path: (global_home / path).read_bytes()
+            for path in expected_paths(package, "global")
+        }
+        for command in global_commands:
+            require_success(command, global_work, global_env)
+        deployed_after = {
+            path: (global_home / path).read_bytes()
+            for path in expected_paths(package, "global")
+        }
+        if deployed_after != deployed_before:
+            raise ValidationError("global install is not idempotent")
         global_manifest_root = global_home / ".apm"
         if not global_manifest_root.is_dir():
             raise ValidationError(f"{global_manifest_root}: global APM state was not created")
@@ -335,8 +355,9 @@ def test_package(apm: str, package: Package, parent: Path) -> None:
         # APM has no audit --global mode. Verify its user-scope state and actual
         # deployment destinations directly instead of project-auditing symlinks.
         assert_install(package, global_home, "global")
-        global_skills = global_home / TARGET_LAYOUTS[package.target]["global_skills"]
-        run_validator_regressions(global_skills, global_work, global_env)
+        if package.plugin == "deep-research":
+            global_skills = global_home / TARGET_LAYOUTS[package.target]["global_skills"]
+            run_validator_regressions(global_skills, global_work, global_env)
 
 
 def global_instruction_body() -> str:
@@ -389,8 +410,7 @@ def test_root_global_instruction(apm: str, parent: Path) -> None:
             REPO_ROOT / ".apm" / "instructions", package / ".apm" / "instructions"
         )
         shutil.copytree(REPO_ROOT / ".apm" / "skills", package / ".apm" / "skills")
-        env = os.environ.copy()
-        env["HOME"] = str(home)
+        env = isolated_env(home)
 
         require_success(
             [apm, "install", str(package), "--target", "agent-skills", "--global"],
