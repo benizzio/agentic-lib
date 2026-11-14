@@ -24,7 +24,8 @@ COMMAND_TIMEOUT_SECONDS = 60
 DEEP_RESEARCH_OPENCODE_EDIT_RULES = (("*", "deny"), ("*.json", "allow"))
 DEEP_RESEARCH_OPENCODE_BASH_RULES = (("*", "deny"), ("date *", "allow"))
 DEEP_RESEARCH_COPILOT_TOOLS = ["read", "edit", "search", "web"]
-DRY_REVIEWER_OPENCODE_RULES = [
+HYPERFOCUS_REVIEWERS = {"dry-reviewer", "srp-reviewer"}
+HYPERFOCUS_OPENCODE_RULES = [
     ("*", "*", "allow"),
     ("read", "*", "allow"),
     ("read", "*.env", "deny"),
@@ -48,7 +49,7 @@ DRY_REVIEWER_OPENCODE_RULES = [
     ("github_pull_request_review_write", "*", "allow"),
     ("github_add_comment_to_pending_review", "*", "allow"),
 ]
-DRY_REVIEWER_COPILOT_TOOLS = [
+HYPERFOCUS_COPILOT_TOOLS = [
     "read", "search", "web", "execute", "context7/resolve-library-id", "context7/query-docs",
     "github/get_me", "github/get_file_contents", "github/pull_request_read",
     "github/pull_request_review_write", "github/add_comment_to_pending_review",
@@ -218,22 +219,23 @@ def agent_capability_errors(
 ) -> list[str]:
     if package.plugin == "hyperfocus-review":
         errors = []
-        if metadata.get("name") != "dry-reviewer":
-            errors.append(f"{agent}: Hyperfocus Review agent name must be dry-reviewer")
+        name = agent.name.removesuffix(".md").removesuffix(".agent")
+        if name not in HYPERFOCUS_REVIEWERS or metadata.get("name") != name:
+            errors.append(f"{agent}: Hyperfocus Review agent name must match a supported reviewer filename")
         if "model" in metadata:
-            errors.append(f"{agent}: dry-reviewer must not pin a model")
+            errors.append(f"{agent}: Hyperfocus Review agents must not pin a model")
         if package.target == "opencode":
             expected = [
                 {"action": action, "resource": resource, "effect": effect}
-                for action, resource, effect in DRY_REVIEWER_OPENCODE_RULES
+                for action, resource, effect in HYPERFOCUS_OPENCODE_RULES
             ]
             if metadata.get("permissions") != expected:
-                errors.append(f"{agent}: dry-reviewer must use the ordered review-only OpenCode policy")
+                errors.append(f"{agent}: Hyperfocus Review agents must use the ordered review-only OpenCode policy")
         elif package.target == "copilot":
-            if metadata.get("tools") != DRY_REVIEWER_COPILOT_TOOLS:
-                errors.append(f"{agent}: dry-reviewer must use the explicit Copilot review tools")
+            if metadata.get("tools") != HYPERFOCUS_COPILOT_TOOLS:
+                errors.append(f"{agent}: Hyperfocus Review agents must use the explicit Copilot review tools")
             if metadata.get("include-custom-instructions") is not True:
-                errors.append(f"{agent}: dry-reviewer must include repository instructions")
+                errors.append(f"{agent}: Hyperfocus Review agents must include repository instructions")
         return errors
     if package.plugin != "deep-research" or metadata.get("name") != "web-search-agent":
         return []

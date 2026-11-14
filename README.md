@@ -56,6 +56,16 @@ draft, and adds an issue-closing reference when the related issue is known.
 
 UNDER DESIGN, DEVELOPMENT AND EXPERIMENTATION!
 
+Focused review subagents for OpenCode and Copilot CLI:
+
+- `dry-reviewer`: DRY, reuse of existing functionality, and utility extraction.
+- `srp-reviewer`: Single Responsibility Principle violations, with evidence of
+  conflicting responsibilities and independent reasons to change.
+
+Both review changed code by default and recommend changes without implementing
+them. See [`plugins/hyperfocus-review/README.md`](plugins/hyperfocus-review/README.md)
+for installation, use, and verification limits.
+
 #### Deep Research
 
 An adapted fork of

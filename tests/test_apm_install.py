@@ -30,7 +30,7 @@ class InstallTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, path)
 
-    def test_reviewer_install_needs_only_agent(self) -> None:
+    def test_reviewer_install_needs_only_agents(self) -> None:
         for package in self.packages:
             if package.plugin != "hyperfocus-review":
                 continue
@@ -47,22 +47,32 @@ class InstallTests(unittest.TestCase):
                         install.assert_install(package, root, scope)
 
     def test_rejects_renamed_missing_and_modified_agents(self) -> None:
-        package = next(p for p in self.packages if p.plugin == "hyperfocus-review" and p.target == "opencode")
-        for mutation in ("rename", "missing", "body", "policy"):
-            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as raw:
-                root = Path(raw)
-                self.deploy_agents(package, root, "project")
-                path = root / next(iter(install.installed_agents(package, "project")))
-                if mutation == "rename":
-                    path.rename(path.with_name("other.md"))
-                elif mutation == "missing":
-                    path.unlink()
-                elif mutation == "body":
-                    path.write_text(path.read_text() + "Changed body.\n", encoding="utf-8")
-                else:
-                    path.write_text(path.read_text().replace("effect: deny", "effect: allow", 1), encoding="utf-8")
-                with self.assertRaises(install.ValidationError):
-                    install.assert_install(package, root, "project")
+        for package in self.packages:
+            if package.plugin != "hyperfocus-review":
+                continue
+            for scope in ("project", "global"):
+                for agent in install.installed_agents(package, scope):
+                    for mutation in ("rename", "missing", "body", "policy"):
+                        with self.subTest(target=package.target, scope=scope, agent=agent, mutation=mutation), \
+                             tempfile.TemporaryDirectory() as raw:
+                            root = Path(raw)
+                            self.deploy_agents(package, root, scope)
+                            path = root / agent
+                            if mutation == "rename":
+                                path.rename(path.with_name("other.md"))
+                            elif mutation == "missing":
+                                path.unlink()
+                            elif mutation == "body":
+                                path.write_text(path.read_text() + "Changed body.\n", encoding="utf-8")
+                            else:
+                                text = path.read_text()
+                                if package.target == "opencode":
+                                    text = text.replace("effect: deny", "effect: allow", 1)
+                                else:
+                                    text = text.replace("- read", "- edit", 1)
+                                path.write_text(text, encoding="utf-8")
+                            with self.assertRaises(install.ValidationError):
+                                install.assert_install(package, root, scope)
 
     def test_deep_research_resources_are_still_required(self) -> None:
         package = next(p for p in self.packages if p.plugin == "deep-research")

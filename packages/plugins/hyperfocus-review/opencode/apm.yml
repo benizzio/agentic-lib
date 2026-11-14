@@ -1,7 +1,7 @@
 # Generated; do not edit.
 name: hyperfocus-review-opencode
-version: "0.1.4"
-description: Focused code review agents for DRY, reuse, and utility extraction for opencode.
+version: "0.2.0"
+description: Focused code review agents for DRY, reuse, utility extraction, and SRP for opencode.
 author: benizzio
 license: MIT
 dependencies:

@@ -192,7 +192,7 @@ class ContentChecksTests(unittest.TestCase):
         )
 
 
-class DryReviewerTests(unittest.TestCase):
+class HyperfocusReviewerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.packages = {
             package.target: package
@@ -200,14 +200,14 @@ class DryReviewerTests(unittest.TestCase):
             if package.plugin == "hyperfocus-review"
         }
 
-    def check_metadata(self, target: str, metadata: dict) -> list[str]:
+    def check_metadata(self, target: str, metadata: dict, reviewer: str = "dry-reviewer") -> list[str]:
         return validate_packages.agent_frontmatter_errors(
-            self.packages[target], Path("dry-reviewer.agent.md"), metadata
+            self.packages[target], Path(f"{reviewer}.agent.md"), metadata
         )
 
-    def metadata(self, target: str) -> dict:
+    def metadata(self, target: str, reviewer: str = "dry-reviewer") -> dict:
         return validate_packages.frontmatter(
-            self.packages[target].root / ".apm/agents/dry-reviewer.agent.md"
+            self.packages[target].root / f".apm/agents/{reviewer}.agent.md"
         )[1]
 
     def test_generated_packages_pass_content_checks(self) -> None:
@@ -216,20 +216,49 @@ class DryReviewerTests(unittest.TestCase):
             self.assertEqual(validate_packages._content_checks(package, ROOT), [])
 
     def test_canonical_body_and_package_version_are_preserved(self) -> None:
-        source = ROOT / "plugins/hyperfocus-review/source/agents/dry-reviewer.md"
-        source_body = source.read_text(encoding="utf-8").split("---", 2)[2].strip()
         source_version = validate_packages.load_yaml_mapping(
             ROOT / "plugins/hyperfocus-review/plugin.yml"
         )["package"]["version"]
-        self.assertEqual(source_version, "0.1.4")
+        self.assertEqual(source_version, "0.2.0")
         for target, package in self.packages.items():
             manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
             self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
             self.assertEqual(manifest["version"], source_version)
             self.assertEqual(manifest["includes"], [".apm/agents/"])
-            agent = package.root / ".apm/agents/dry-reviewer.agent.md"
-            body = agent.read_text(encoding="utf-8").split("---", 2)[2].strip()
-            self.assertEqual(body, source_body)
+            self.assertEqual(
+                {path.name for path in (package.root / ".apm/agents").glob("*.md")},
+                {"dry-reviewer.agent.md", "srp-reviewer.agent.md"},
+            )
+            for reviewer in ("dry-reviewer", "srp-reviewer"):
+                with self.subTest(target=target, reviewer=reviewer):
+                    source = ROOT / f"plugins/hyperfocus-review/source/agents/{reviewer}.md"
+                    source_body = source.read_text(encoding="utf-8").split("---", 2)[2].strip()
+                    agent = package.root / f".apm/agents/{reviewer}.agent.md"
+                    body = agent.read_text(encoding="utf-8").split("---", 2)[2].strip()
+                    self.assertEqual(body, source_body)
+
+    def test_reviewers_share_capabilities_without_identity_bypass(self) -> None:
+        for target, package in self.packages.items():
+            dry = self.metadata(target)
+            srp = self.metadata(target, "srp-reviewer")
+            self.assertEqual(
+                {key: value for key, value in dry.items() if key not in {"name", "description"}},
+                {key: value for key, value in srp.items() if key not in {"name", "description"}},
+            )
+            for reviewer, metadata in (("dry-reviewer", dry), ("srp-reviewer", srp)):
+                for suffix in (".md", ".agent.md"):
+                    with self.subTest(target=target, reviewer=reviewer, suffix=suffix):
+                        path = Path(reviewer + suffix)
+                        self.assertEqual(
+                            validate_packages.agent_frontmatter_errors(package, path, metadata), []
+                        )
+                        other = "srp-reviewer" if reviewer == "dry-reviewer" else "dry-reviewer"
+                        self.assertTrue(validate_packages.agent_frontmatter_errors(
+                            package, path, {**metadata, "name": other}
+                        ))
+                        self.assertTrue(validate_packages.agent_frontmatter_errors(
+                            package, Path("unknown" + suffix), {**metadata, "name": "unknown"}
+                        ))
 
     def test_review_scope_contract_supports_confirmed_whole_codebase(self) -> None:
         # These are static prompt regressions, not evidence of model behavior.
@@ -343,7 +372,7 @@ class DryReviewerTests(unittest.TestCase):
         for package in self.packages.values():
             self.assertFalse((package.root / ".apm/skills").exists())
             for scope in ("project", "global"):
-                self.assertEqual(len(package.config["tests"][f"{scope}_paths"]), 1)
+                self.assertEqual(len(package.config["tests"][f"{scope}_paths"]), 2)
         self.assertFalse(any(rule["action"] == "skill" for rule in self.metadata("opencode")["permissions"]))
 
     def test_web_access_and_direct_edit_restrictions(self) -> None:
