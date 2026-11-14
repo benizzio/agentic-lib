@@ -3,9 +3,45 @@
 Experimental. Packaging checks do not establish model behavior or authenticated
 tool exposure. The root README's development warning still applies.
 
+## Reviewers
+
+- `dry-reviewer` focuses on DRY, reuse of available functionality, and utility
+  extraction.
+- `srp-reviewer` focuses on Single Responsibility Principle violations in functions,
+  methods, classes, and modules. It requires evidence of conflicting responsibilities,
+  their independent reasons to change, and a concrete behavior-preserving separation
+  or delegation recommendation.
+
+SRP review distinguishes independently changing policies from implementation steps
+serving one purpose. Length, branching, or multiple collaborators alone are not
+violations. Cohesive orchestration is valid. Recommendations should clarify useful
+responsibility boundaries rather than fragment code into small helpers or introduce
+speculative abstractions.
+
+Both agents follow the same scope, exploration, evidence, permissions, and
+publication contract. Changes to these shared policies must stay aligned in both
+canonical prompts and target overlays.
+
+### Use
+
+Ask the harness to delegate to the reviewer matching the concern. Supply a PR/MR,
+a feature branch with its base, or a diff with source and revision references.
+For example:
+
+> Use srp-reviewer to review the feature branch against main for SRP violations.
+> Report only.
+
+> Use dry-reviewer to review the supplied PR for reuse and utility extraction.
+> Publish a comment-only review if the available tools and permissions support it.
+
+Use the actual base reference for the change; `main` is only an example. Whole-codebase
+review requires an explicit request and confirmation after the context-size/quality
+warning. Each reviewer accepts no findings as a valid result and reports coverage
+limits.
+
 ## Reviewer-only access
 
-`dry-reviewer` recommends changes; it never implements them. It discovers the
+Each reviewer recommends changes; it never implements them. It discovers the
 tools and execution facilities available in its harness and chooses operations
 by their effects, not a fixed exploration-tool list. Tools and shell commands
 may inspect code, but must not change reviewed content, source, or versioned
@@ -50,10 +86,10 @@ direct-edit denials; strict protection requires external read-only enforcement.
 
 ## Publication discovery
 
-The agent discovers the remote version-control review service, live tool schemas,
+Each reviewer discovers the remote version-control review service, live tool schemas,
 documentation, and permitted capabilities before publication. GitHub PR review
 comments are an example, not a prescribed API workflow or a promise of other
-service support. This package ships only the agent, with no publication skill.
+service support. This package ships only the agents, with no publication skill.
 Discovery cannot provision tools: retain/adapt the explicit MCP mappings above,
 and configure unlisted Copilot MCP tools in the consuming profile.
 
@@ -84,7 +120,7 @@ apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode --t
 apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/copilot --target copilot
 ```
 
-Both targets support adding `--global`. For example:
+Each package installs both reviewers. Both targets support adding `--global`. For example:
 
 ```sh
 apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode --target opencode --global
@@ -93,6 +129,8 @@ apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode --t
 No shared-skill or two-step install is required for Hyperfocus Review. Deep
 Research's shared-skill workaround remains separate. `make validate` tests
 isolated project/global installation, exact agent contents,
-permission metadata, and repeat-install idempotence for both targets. See
+permission metadata, and repeat-install idempotence for both reviewers on both targets. See
 [`tests/fixtures/hyperfocus-review/README.md`](../../tests/fixtures/hyperfocus-review/README.md)
-for model-backed acceptance checks and their verification status.
+for the DRY reviewer's model-backed acceptance protocol and its verification status.
+SRP model-backed behavior and authenticated tool exposure have not been verified;
+package and installation checks do not establish review quality.
