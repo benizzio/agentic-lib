@@ -496,7 +496,7 @@ class HyperfocusReviewerTests(unittest.TestCase):
             ("review-id-selection-ambiguity", "do not create a review"),
             ("stale-publication-comparison", "reviewed base/head AND comparison consistency at both gates"),
             ("publication-anchor-recovery", "never invent anchors"),
-            ("authorized-cli-execution", "request it separately from shell approval"),
+            ("authorized-cli-execution", "Follow the consuming environment's external-service policies"),
         ):
             with self.subTest(case=case_id):
                 self.assertIn(decision, fixtures[case_id]["expected"])

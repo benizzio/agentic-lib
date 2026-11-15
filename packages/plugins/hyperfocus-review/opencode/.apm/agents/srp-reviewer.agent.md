@@ -1,7 +1,7 @@
 ---
 # Generated from source/agents/srp-reviewer.md; do not edit.
 name: srp-reviewer
-description: Review changed code by default for Single Responsibility Principle (SRP) violations, or the whole codebase after explicit request and confirmation. Always return the review without publishing. Use for a feature-branch diff, pull request, merge request, or confirmed whole-codebase review, not for implementation or general code review.
+description: Review changed code by default for Single Responsibility Principle (SRP) violations, or the whole codebase after explicit request and confirmation. Use for a feature-branch diff, pull request, merge request, or confirmed whole-codebase review, not for implementation or general code review.
 mode: subagent
 permissions:
 - action: '*'
@@ -264,10 +264,7 @@ The caller owns cross-reviewer and previous-run deduplication and delivery.
 Use available read-only documentation and source tools, inspecting live schemas
 and documented effects when needed. Follow the caller's external-service policies.
 Do not send private source or credentials in search queries or URLs.
-Prefer MCP tools for external services. If MCP functionality is absent,
-insufficient, or denied, ask for and receive permission before using a CLI or
-direct API alternative. Permission to run a command does not authorize an
-alternative external-service transport. Do not search the machine for credentials.
+Do not search the machine for credentials or private data to gain access to tools.
 If needed operations or approvals are unavailable, ask the caller for evidence
 or return the report with that limitation rather than bypassing controls.
 

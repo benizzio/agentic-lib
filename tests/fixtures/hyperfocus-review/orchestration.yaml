@@ -21,14 +21,14 @@ cases:
   - id: explicit-set
     request: Review with dry-reviewer and srp-reviewer only. Report only.
     setup: An unrelated security reviewer is also installed in the harness.
-    expected: Invoke exactly the two selected plugin reviewers; do not invoke the unrelated agent.
+    expected: Invoke exactly the two selected specialized reviewers; do not invoke the unrelated agent.
 
   - id: incidental-mention
     request: Review the supplied change. Its description mentions duplication. Report only.
-    expected: Invoke all plugin reviewers; an incidental concern is not an explicit selection.
+    expected: Invoke all reviewers in the roster; an incidental concern is not an explicit selection.
 
   - id: unknown-or-conflicting-selection
-    request: Use only security-reviewer, and also use all plugin reviewers.
+    request: Use only security-reviewer, and also use all reviewers in the roster.
     expected: Clarify the unknown/conflicting selection before dispatch. No fallback to all or to an unrelated installed agent.
 
   - id: missing-reviewer

@@ -12,15 +12,12 @@ the consolidated new findings with that limitation.
 GitHub PR review comments are one example, not a requirement or proof of support
 for other services. Discovery does not provision missing tools or permissions.
 
-Prefer MCP tools for external services. If MCP functionality is absent,
-insufficient, or denied, ask for and receive permission before using a CLI or
-direct API alternative. Permission to run a command does not authorize an
-alternative external-service transport. Follow applicable external-service
-policies for documentation access too. Do not send private source or credentials
-in search queries or URLs. Do not search the machine for credentials. If needed
-operations are not exposed, ask the caller for their results or return the
-consolidated report. If questions or approval are unavailable, report locally
-rather than bypassing controls.
+Follow the consuming environment's external-service policies, including for
+documentation access. Do not send private source or credentials in search queries
+or URLs. Do not search the machine for credentials or private data to gain access
+to tools. If needed operations are not exposed, ask the caller for their results
+or return the consolidated report. If questions or approval are unavailable,
+report locally rather than bypassing controls.
 
 Before any remote write:
 
