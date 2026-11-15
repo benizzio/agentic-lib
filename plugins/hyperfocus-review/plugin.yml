@@ -1,8 +1,8 @@
 schema_version: 1
 
 package:
-  version: 0.2.0
-  description: Focused code review agents for DRY, reuse, utility extraction, and SRP.
+  version: 0.3.0
+  description: Focused review orchestration with DRY and SRP reviewers, deduplication, and capability-aware publication.
   author: benizzio
   license: MIT
   repository: https://github.com/benizzio/agentic-lib
@@ -14,3 +14,6 @@ artifacts:
   - source: source/agents/srp-reviewer.md
     destination: .apm/agents/srp-reviewer.agent.md
     frontmatter: true
+  - source: source/skills/
+    destination: .apm/skills/
+    frontmatter_glob: "**/SKILL.md"

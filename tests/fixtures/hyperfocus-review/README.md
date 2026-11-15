@@ -1,8 +1,11 @@
-# DRY reviewer behavioral acceptance
+# Hyperfocus Review behavioral acceptance
 
 `cases.yaml` contains synthetic inputs and expected decisions, not observed
-model results. Run each case separately through the installed `dry-reviewer`
-on both OpenCode and Copilot CLI. Do not combine cases into one review.
+model results. Run each case separately on both OpenCode and Copilot CLI.
+Use its `entrypoint` when specified, otherwise the installed `dry-reviewer`.
+Publication cases now run through the installed `hyperfocus-review` skill.
+`orchestration.yaml` adds selection, repeated-run, and return-only scenarios.
+Do not combine independent cases into one review.
 
 ## Protocol
 
@@ -16,23 +19,26 @@ on both OpenCode and Copilot CLI. Do not combine cases into one review.
    the reviewed revision for whole-codebase cases. Tell the agent these are
    fixture identifiers, not actual Git SHAs. For merge-base inspection,
    create real local fixture commits and supply their actual revisions instead.
-3. Verify the installed agent is selected, including its prompt and target
+3. Verify the installed skill/agent is selected, including its prompt and target
    permissions. Record harness/model versions and which tools the subagent
    actually receives. Do not infer exposure from the parent catalog.
    OpenCode must deny direct edits and delegation, allow Code Mode orchestration,
-   shell commands, unfamiliar tool actions, external directories, and review
-   tools without routine approval by this profile. Verify actual runtime rules,
+   shell commands, unfamiliar tool actions, external directories, and read-only
+   review tools without routine approval by this profile. Known GitHub publication
+   tools must be denied for reviewers. Verify actual runtime rules,
    including later consuming-configuration restrictions. Copilot must expose
-   execution but omit editing and delegation; verify shell approval under the
+   execution but omit publication, editing and delegation; verify shell approval under the
    consuming CLI's configuration. Verify native web search/fetch separately.
-4. Use stubbed remote tools only. For each publication case, record the tool
+4. Use stubbed remote tools only, exposed to the skill's caller for publication.
+   Reviewers must return reports without remote writes even when invoked directly.
+   For each publication case, record the tool
    trace and scripted replies specified in the case. Do not use live remote
    review-write tools. If the harness cannot substitute
    tools, mark publication simulation NOT RUN rather than substituting a live PR.
 5. Compare the resulting report and trace with `expected`. Every finding must
-   cite an in-scope line at the reviewed revision (a changed line for changed-code
+   cite an in-scope line at the reviewed revision (a changed file for changed-code
    reviews; unchanged lines are allowed for confirmed whole-codebase reviews),
-   reuse source/API, behavior compatibility, and a concrete recommendation.
+   specialized evidence, behavior compatibility, and a concrete recommendation.
    Reject new dependencies, unrelated findings, speculative extraction, or silent
    coverage omissions.
 6. Record PASS/FAIL/NOT RUN for every case and target, along with the report,
@@ -96,8 +102,9 @@ scratch space separated from source. This protocol does not provision isolation.
 
 These are simulated service capabilities, not prescribed APIs or claims about
 live integrations. Supply live stub schemas/documentation describing selection
-semantics, side effects and non-approval publication. No installed publication
-skill is needed. Record discovery and state checks, not a named API call sequence.
+semantics, side effects and non-approval publication. Run the installed
+`hyperfocus-review` skill and record discovery, delegation and state checks, not a
+named API call sequence. Subagents return complete reports without publishing.
 Discovery does not grant access: configure exact synthetic MCP names in each
 consumer, especially Copilot's explicit tool list. Existing package mappings may
 not support safe ID binding; the expected result then is a full report, not
@@ -143,16 +150,39 @@ broader access or a guessed fallback.
   success or assume the write did not happen.
 - **Authorized CLI:** expose equivalent documented ID-bound operations only
   after explicit transport authorization, separately from command approvals.
-  Stub reviewer execution or caller-supplied results; never run a live service.
+  Stub orchestrator execution or caller-supplied results; never run a live service.
   Rerun with transport authorization absent, execution denied/unavailable, caller
   results absent, and an ambiguous write. Expect clarification or full recovery
   reports without source edits, guessed operations, or unauthorized fallback.
 
-## Verification status for this change
+## Orchestration protocol
+
+Use `orchestration.yaml` with the installed skill and its bundled roster/references.
+Its default source is the `existing-helper` case from `cases.yaml`, under synthetic
+repository `fixture/repo`, local change `feature-labels`, base `base-1`, head
+`head-1`, comparison `fixture-diff`. Supply these as fixture identifiers, not real
+VCS revisions. For stubbed reviewer results, use complete reports matching this
+context, including evidence from that fixture. Use the SRP result described by
+each scenario; do not manufacture an SRP violation in the existing-helper source.
+
+For selection tests, record actual child invocation names/arguments and returned
+reports. For consolidation/delivery tests, inject the specified child reports
+through a stub delegation tool to isolate orchestration from specialist quality.
+Record that distinction. For multi-run cases preserve the actual first report and
+run context, then replay the second request. Never replace observed output with
+the expected output. Supply all history pages and record which were read.
+If the harness cannot stub delegation/service tools, mark those cases NOT RUN.
+
+Reject any child publication write, extra reviewer, silent missing reviewer,
+repeated suppressed finding in a local/remote summary, or unverified success.
+Compare submitted content and local output independently. Record PASS/FAIL/NOT RUN
+per scenario, target, and model alongside transcripts and tool traces.
+
+## Verification status
 
 Automated checks cover build, capability validation and install helpers. The
 full validation suite additionally checks isolated project/global installation
 and repeat-install idempotence. These are packaging checks, not model evidence.
-Model-backed scenarios and authenticated publication/tool exposure are NOT RUN.
-Copilot CLI was not present in the implementation environment. Live publication
+Model-backed orchestration/reviewer scenarios and authenticated publication/tool
+exposure are NOT RUN. Static fixtures describe expected behavior only. Live publication
 requires explicit approval of a disposable PR and is outside automated validation.

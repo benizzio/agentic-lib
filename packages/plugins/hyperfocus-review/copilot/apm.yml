@@ -1,7 +1,7 @@
 # Generated; do not edit.
 name: hyperfocus-review-copilot
-version: "0.2.0"
-description: Focused code review agents for DRY, reuse, utility extraction, and SRP for copilot.
+version: "0.3.0"
+description: Focused review orchestration with DRY and SRP reviewers, deduplication, and capability-aware publication for copilot.
 author: benizzio
 license: MIT
 dependencies:
@@ -9,4 +9,5 @@ dependencies:
   mcp: []
 includes:
 - .apm/agents/
+- .apm/skills/
 scripts: {}

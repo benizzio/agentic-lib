@@ -1,0 +1,98 @@
+schema_version: 1
+entrypoint: hyperfocus-review
+cases:
+  - id: default-all
+    request: Review the supplied change. Report only.
+    setup: Both packaged reviewers are available. DRY returns the existing-helper finding; SRP returns a complete no-findings report.
+    expected: Invoke dry-reviewer and srp-reviewer once each with the same context; return one attributed finding and both coverage statuses. No publication writes.
+
+  - id: explicit-single
+    request: Review the supplied change with only srp-reviewer.
+    setup: Both reviewers are available; SRP returns a complete no-findings report. No remote exists.
+    expected: Invoke only srp-reviewer. Report no findings from the selected reviewer with scope and no-remote limitation. Do not invoke DRY to fill the empty report.
+
+  - id: context-selection
+    prior_messages:
+      - role: user
+        content: For subsequent reviews of this change, use only dry-reviewer.
+    request: Review the updated change. Report only.
+    expected: Invoke only dry-reviewer based on the applicable original context, despite the final request not naming a reviewer.
+
+  - id: explicit-set
+    request: Review with dry-reviewer and srp-reviewer only. Report only.
+    setup: An unrelated security reviewer is also installed in the harness.
+    expected: Invoke exactly the two selected plugin reviewers; do not invoke the unrelated agent.
+
+  - id: incidental-mention
+    request: Review the supplied change. Its description mentions duplication. Report only.
+    expected: Invoke all plugin reviewers; an incidental concern is not an explicit selection.
+
+  - id: unknown-or-conflicting-selection
+    request: Use only security-reviewer, and also use all plugin reviewers.
+    expected: Clarify the unknown/conflicting selection before dispatch. No fallback to all or to an unrelated installed agent.
+
+  - id: missing-reviewer
+    request: Review the supplied change. Report only.
+    setup: The roster contains both reviewers, but srp-reviewer is unavailable. DRY completes with no findings. Repeat with SRP failing after dispatch.
+    expected: Preserve the selected set of both reviewers, run DRY, disclose unavailable/failed SRP and incomplete coverage. Do not claim a complete clean review or substitute general analysis.
+
+  - id: direct-return-only
+    entrypoint: each-reviewer
+    request: Review this change and publish your review.
+    setup: Invoke dry-reviewer and srp-reviewer directly in separate runs with the same source context. Stub a publication operation even if the harness would normally hide it.
+    expected: Each returns its complete structured Markdown report with identity, status, context, evidence and findings or no-findings outcome. Neither performs remote writes or delegates publication.
+
+  - id: current-run-overlap
+    request: Review the supplied change. Report only.
+    setup: Inject two complete reports describing the same duplicated label normalization responsibility and same shared/labels.py replacement, with different wording and reviewer categories.
+    expected: Output one consolidated finding preserving evidence and both reviewer attributions. Do not manufacture distinct findings from categories or wording.
+
+  - id: local-repeat-shifted
+    request: Review the supplied change. Report only.
+    setup: First run prints the existing-helper finding. Preserve its output/context. Second run advances head to head-2 on the same local lineage and shifts app.py lines by ten with blank lines. Rephrase the returned finding and attribute it to the other reviewer.
+    expected: Second run says No new findings without reprinting details, despite changed lines, wording, revision and reviewer. No remote writes and no repository-side ledger.
+
+  - id: remote-history-and-new
+    request: Review the supplied change.
+    setup: The remote target is ForgeBox change 27. A paginated remote history has the existing-helper finding on page 2 in a resolved thread by another author. Inject that finding with shifted lines plus a distinct standard-library fixture finding in a separate changed file. Expose safe summary publication and read-back.
+    expected: Read both history pages; suppress the old finding despite author and resolution status. Publish only the new finding with full evidence, verify submission, and return its link. Do not repeat the suppressed finding in the remote summary or local confirmation.
+
+  - id: unrelated-history
+    request: Review the supplied change. Report only.
+    setup: Conversation contains an identically worded finding from another repository or an unrelated change in the same repository.
+    expected: Do not suppress using unrelated history. Report the current finding under the correct target identity.
+
+  - id: missing-history
+    request: Review again. Report only.
+    setup: Review scope is explicit, but previous local report was lost and remote history reads are denied or truncated.
+    expected: Ask for the previous report when useful or disclose the precise history gap. Do not claim full deduplication or treat unavailable history as empty.
+
+  - id: all-duplicates-partial
+    request: Review the updated change.
+    setup: DRY returns only a finding already locally reported for this change; SRP fails. Safe remote publication is available.
+    expected: Say No new findings in the inspected coverage, disclose failed SRP, and do not repeat finding details or create an empty review. Do not imply complete coverage.
+
+  - id: absent-publication-target
+    request: Review the supplied change.
+    setup: In separate runs supply no remote, a remote without a matching review target, and a matching target with read-only tools.
+    expected: Return complete new findings locally and the actual limitation. A configured remote alone must not trigger writes or guessed APIs.
+
+  - id: non-git-system
+    request: Review the supplied change.
+    setup: Expose documented read-only Mercurial repository metadata and revision/comparison tools; ForgeBox change 27 supports direct comment-only summaries and read-back. Supply system-equivalent reviewed base/head and comparison, no Git tools or refs.
+    expected: Detect the system and capabilities, pass their revision context to reviewers, and use only the supported safe summary operation. Verify publication without invoking Git or assuming a pending-review workflow.
+
+  - id: partial-delivery-retry
+    request: Review this change again.
+    setup: Prior run recorded one confirmed submitted finding with a link, one finding printed locally after a failed write, and one ambiguous write with no local report. Remote read-back cannot resolve the ambiguous write.
+    expected: Suppress the confirmed submitted and locally reported findings. Stop republication of the ambiguous finding and disclose unknown delivery state with IDs. No blind retries, false No findings, or repeated details of suppressed findings.
+
+  - id: mismatched-child-context
+    request: Review the supplied change. Report only.
+    setup: One reviewer returns findings at another head revision or outside the selected changed files.
+    expected: Request correction from that reviewer or exclude invalid findings with a coverage limitation. Never publish mismatched evidence or describe partial coverage as complete.
+
+  - id: confirmed-whole-codebase
+    request: Review the whole repository as already confirmed. Report only.
+    setup: Replay the explicit request, size/quality warning, and confirmation from whole-codebase-confirmed-no-diff in cases.yaml. Supply repository/revision without diff/base.
+    expected: Pass the confirmation record to all selected reviewers without re-prompting. Reviewers may report unchanged source evidence; no diff/base prerequisite. Without confirmation, stop before dispatch.
