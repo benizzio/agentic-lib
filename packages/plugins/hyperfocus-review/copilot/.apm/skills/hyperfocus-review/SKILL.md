@@ -63,7 +63,7 @@ Create a common review context:
 
 Stop for missing scope decisions. If questions are unavailable, return the
 clarification request rather than assuming consent. Context exploration outside
-the diff is permitted; it does not broaden review scope.
+the diff is permitted.
 
 For unfamiliar exploration operations, inspect documented effects, configuration,
 hooks, options, and output paths before execution. Do not change protected source,
