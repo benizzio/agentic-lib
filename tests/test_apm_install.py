@@ -23,14 +23,16 @@ class InstallTests(unittest.TestCase):
     def setUp(self) -> None:
         self.packages = validate_packages.discover_packages()
 
-    def deploy_agents(self, package, root: Path, scope: str) -> None:
+    def deploy_agents(self, package, root: Path, scope: str, *, skills: bool = False) -> None:
         files = install.installed_agents(package, scope)
+        if skills:
+            files.update(install.installed_skill_files(package, scope))
         for destination, source in files.items():
             path = root / destination
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, path)
 
-    def test_reviewer_install_needs_only_agents(self) -> None:
+    def test_reviewer_install_requires_skill_and_agents(self) -> None:
         for package in self.packages:
             if package.plugin != "hyperfocus-review":
                 continue
@@ -38,9 +40,15 @@ class InstallTests(unittest.TestCase):
                 with self.subTest(target=package.target, scope=scope), tempfile.TemporaryDirectory() as raw:
                     root = Path(raw)
                     self.deploy_agents(package, root, scope)
-                    self.assertEqual(install.installed_skill_files(package, scope), {})
-                    self.assertFalse((root / ".agents/skills").exists())
+                    with self.assertRaisesRegex(install.ValidationError, "missing"):
+                        install.assert_install(package, root, scope)
+                    self.deploy_agents(package, root, scope, skills=True)
                     install.assert_install(package, root, scope)
+                    skill = root / ".agents/skills/hyperfocus-review/SKILL.md"
+                    skill.write_text(skill.read_text() + "Changed workflow.\n", encoding="utf-8")
+                    with self.assertRaisesRegex(install.ValidationError, "deployed skill file differs"):
+                        install.assert_install(package, root, scope)
+                    self.deploy_agents(package, root, scope, skills=True)
                     agent_root = root / install.TARGET_LAYOUTS[package.target][f"{scope}_agents"]
                     (agent_root / "unexpected.md").write_text("extra", encoding="utf-8")
                     with self.assertRaisesRegex(install.ValidationError, "agent set"):
@@ -56,7 +64,7 @@ class InstallTests(unittest.TestCase):
                         with self.subTest(target=package.target, scope=scope, agent=agent, mutation=mutation), \
                              tempfile.TemporaryDirectory() as raw:
                             root = Path(raw)
-                            self.deploy_agents(package, root, scope)
+                            self.deploy_agents(package, root, scope, skills=True)
                             path = root / agent
                             if mutation == "rename":
                                 path.rename(path.with_name("other.md"))
@@ -82,17 +90,27 @@ class InstallTests(unittest.TestCase):
             with self.assertRaisesRegex(install.ValidationError, "missing"):
                 install.assert_install(package, root, "project")
 
-    def test_agent_only_global_install_is_direct(self) -> None:
+    def test_hyperfocus_global_install_routes_skills_and_agents(self) -> None:
         for package in self.packages:
             if package.plugin != "hyperfocus-review":
                 continue
             with self.subTest(target=package.target), tempfile.TemporaryDirectory() as raw:
                 root = Path(raw)
-                self.assertFalse((package.root / ".apm/skills").exists())
-                self.assertEqual(
-                    install.global_install_commands("apm", package, root),
-                    (["apm", "install", str(package.root.resolve()), "--target", package.target, "--global"],),
-                )
+                commands = install.global_install_commands("apm", package, root)
+                if package.target == "copilot":
+                    self.assertEqual(
+                        commands,
+                        (["apm", "install", str(package.root.resolve()), "--target", package.target, "--global"],),
+                    )
+                else:
+                    self.assertEqual(len(commands), 2)
+                    self.assertIn("agent-skills", commands[0])
+                    self.assertIn("opencode", commands[1])
+                    staged = root / "opencode-agent-package/.apm/agents"
+                    self.assertEqual(
+                        {path.name for path in staged.glob("*.md")},
+                        {"dry-reviewer.agent.md", "srp-reviewer.agent.md"},
+                    )
 
     def test_deployed_references_are_required_and_preserved(self) -> None:
         for package in self.packages:

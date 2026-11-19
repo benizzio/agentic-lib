@@ -46,13 +46,12 @@ HYPERFOCUS_OPENCODE_RULES = [
     ("github_get_me", "*", "allow"),
     ("github_get_file_contents", "*", "allow"),
     ("github_pull_request_read", "*", "allow"),
-    ("github_pull_request_review_write", "*", "allow"),
-    ("github_add_comment_to_pending_review", "*", "allow"),
+    ("github_pull_request_review_write", "*", "deny"),
+    ("github_add_comment_to_pending_review", "*", "deny"),
 ]
 HYPERFOCUS_COPILOT_TOOLS = [
     "read", "search", "web", "execute", "context7/resolve-library-id", "context7/query-docs",
     "github/get_me", "github/get_file_contents", "github/pull_request_read",
-    "github/pull_request_review_write", "github/add_comment_to_pending_review",
 ]
 
 
@@ -349,6 +348,23 @@ def _content_checks(package: Package, repo_root: Path) -> list[str]:
     agents = sorted(agent_root.glob("*.md")) if agent_root.exists() else []
     if not agents:
         errors.append(f"{package.root}: package contains no agents")
+    if package.plugin == "hyperfocus-review":
+        skill_root = apm_root / "skills" / "hyperfocus-review"
+        for name in ("SKILL.md", "references/publication.md"):
+            if not (skill_root / name).is_file():
+                errors.append(f"{skill_root / name}: required orchestration resource is missing")
+        try:
+            roster = load_yaml_mapping(skill_root / "references/reviewers.yaml").get("reviewers")
+            if (
+                not isinstance(roster, list)
+                or not all(isinstance(name, str) for name in roster)
+                or len(roster) != len(set(roster))
+                or set(roster) != HYPERFOCUS_REVIEWERS
+                or set(roster) != {path.name.removesuffix(".agent.md") for path in agents}
+            ):
+                errors.append(f"{skill_root}: reviewer roster must match all packaged reviewers")
+        except ValidationError as error:
+            errors.append(str(error))
     for agent in agents:
         try:
             _, metadata = frontmatter(agent)

@@ -54,17 +54,98 @@ draft, and adds an issue-closing reference when the related issue is known.
 
 #### Hyperfocus Review
 
-UNDER DESIGN, DEVELOPMENT AND EXPERIMENTATION!
-
-Focused review subagents for OpenCode and Copilot CLI:
+An [Agent Skill](https://agentskills.io/) that orchestrates focused code reviews
+with specialized agents:
 
 - `dry-reviewer`: DRY, reuse of existing functionality, and utility extraction.
 - `srp-reviewer`: Single Responsibility Principle violations, with evidence of
   conflicting responsibilities and independent reasons to change.
 
-Both review changed code by default and recommend changes without implementing
-them. See [`plugins/hyperfocus-review/README.md`](plugins/hyperfocus-review/README.md)
-for installation, use, and verification limits.
+The package includes the `hyperfocus-review` skill, its
+reviewer roster and publication reference, and both reviewers.
+
+##### Install
+
+For a project installation, install the package matching your harness. For
+OpenCode:
+
+```bash
+apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode --target opencode
+```
+
+For GitHub Copilot CLI:
+
+```bash
+apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/copilot --target copilot
+```
+
+Add `--global` to the Copilot command for a user-scope installation. For global
+OpenCode with APM `v0.35.0`, install shared skills and the agents separately:
+
+```bash
+apm install benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode \
+  --target agent-skills --global
+apm install \
+  benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode/.apm/agents/dry-reviewer.agent.md \
+  --target opencode --global
+apm install \
+  benizzio/agentic-lib/packages/plugins/hyperfocus-review/opencode/.apm/agents/srp-reviewer.agent.md \
+  --target opencode --global
+```
+
+The skill and its references are installed under `.agents/skills/hyperfocus-review/`
+in the project, or `~/.agents/skills/hyperfocus-review/` for global installation.
+The OpenCode reviewer profiles require OpenCode `2.1.4` or later.
+
+The calling agent needs access to the reviewers and a delegation tool. Remote
+publication additionally needs supported review-service tools and permissions.
+The skill discovers available capabilities; installation does not provision
+integrations or authentication. Configure tools according to your environment's
+policies.
+
+##### Use
+
+Run the skill from the repository being reviewed. Supply a PR/MR reference, a
+feature branch with its actual base, or a diff with source and revision references.
+For example:
+
+```console
+/hyperfocus-review Review this feature branch against main.
+```
+
+Replace `main` with the actual base reference. With no explicit reviewer selection,
+the skill runs all reviewers in its roster. To select a subset:
+
+```console
+/hyperfocus-review Review this feature branch against main using only srp-reviewer.
+```
+
+A selection in the applicable conversation context also applies. Incidental
+mentions of a concern do not select a reviewer; ambiguous selections are clarified.
+To keep the report local:
+
+```console
+/hyperfocus-review Review this feature branch against main. Report only.
+```
+
+Reviews cover changed code by default. A whole-codebase review requires an explicit
+request and confirmation after the scope/context-size explanation. Reviewers
+recommend changes without implementing them and always return complete reports to
+the caller, including when invoked directly.
+
+The skill consolidates overlapping findings and compares them with previous
+reports available in conversation context and remote history for the same change.
+Detected duplicates are suppressed even if wording, line numbers, or the reporting
+reviewer differ. An all-duplicate run reports "No new findings". To continue a
+local review in a fresh session, supply the previous report when no remote history
+is available. Missing history and incomplete reviewer coverage are disclosed.
+
+When a matching remote review target supports permitted publication, the skill
+publishes a comment-only review and returns verified links. Otherwise it prints
+the report locally with the limitation. Report-only requests perform no publication
+writes. Publication checks revision consistency, source anchors, and ownership of
+pending state; partial or uncertain writes are reported without blind retries.
+These focused reviews do not approve or establish merge readiness.
 
 #### Deep Research
 

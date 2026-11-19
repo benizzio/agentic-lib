@@ -15,8 +15,6 @@ frontmatter:
       - github/get_me
       - github/get_file_contents
       - github/pull_request_read
-      - github/pull_request_review_write
-      - github/add_comment_to_pending_review
   source/agents/srp-reviewer.md:
     include-custom-instructions: true
     tools:
@@ -29,13 +27,13 @@ frontmatter:
       - github/get_me
       - github/get_file_contents
       - github/pull_request_read
-      - github/pull_request_review_write
-      - github/add_comment_to_pending_review
 
 tests:
   project_paths:
     - .github/agents/dry-reviewer.agent.md
     - .github/agents/srp-reviewer.agent.md
+    - .agents/skills/hyperfocus-review/SKILL.md
   global_paths:
     - .copilot/agents/dry-reviewer.agent.md
     - .copilot/agents/srp-reviewer.agent.md
+    - .agents/skills/hyperfocus-review/SKILL.md

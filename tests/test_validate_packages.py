@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import shutil
 import sys
 import tempfile
 import unittest
@@ -215,16 +216,50 @@ class HyperfocusReviewerTests(unittest.TestCase):
         for package in self.packages.values():
             self.assertEqual(validate_packages._content_checks(package, ROOT), [])
 
+    def test_rejects_incomplete_or_invalid_orchestration_resources(self) -> None:
+        for original in self.packages.values():
+            for mutation in ("missing-skill", "missing-publication", "missing-roster",
+                             "omitted-reviewer", "duplicate-reviewer", "unknown-reviewer",
+                             "invalid-roster"):
+                with self.subTest(target=original.target, mutation=mutation), \
+                     tempfile.TemporaryDirectory() as raw:
+                    root = Path(raw) / "package"
+                    shutil.copytree(original.root, root)
+                    skill = root / ".apm/skills/hyperfocus-review"
+                    if mutation.startswith("missing-"):
+                        name = {
+                            "missing-skill": "SKILL.md",
+                            "missing-publication": "references/publication.md",
+                            "missing-roster": "references/reviewers.yaml",
+                        }[mutation]
+                        (skill / name).unlink()
+                    else:
+                        roster = {
+                            "omitted-reviewer": "[dry-reviewer]",
+                            "duplicate-reviewer": "[dry-reviewer, srp-reviewer, dry-reviewer]",
+                            "unknown-reviewer": "[dry-reviewer, srp-reviewer, security-reviewer]",
+                            "invalid-roster": "[{name: dry-reviewer}]",
+                        }[mutation]
+                        (skill / "references/reviewers.yaml").write_text(
+                            f"reviewers: {roster}\n", encoding="utf-8"
+                        )
+                    package = validate_packages.Package(
+                        original.plugin, original.target, root,
+                        original.config_path, original.config,
+                    )
+                    errors = validate_packages._content_checks(package, ROOT)
+                    self.assertTrue(errors, mutation)
+
     def test_canonical_body_and_package_version_are_preserved(self) -> None:
         source_version = validate_packages.load_yaml_mapping(
             ROOT / "plugins/hyperfocus-review/plugin.yml"
         )["package"]["version"]
-        self.assertEqual(source_version, "0.2.0")
+        self.assertEqual(source_version, "0.3.0")
         for target, package in self.packages.items():
             manifest = validate_packages.load_yaml_mapping(package.root / "apm.yml")
             self.assertEqual(manifest["name"], f"hyperfocus-review-{target}")
             self.assertEqual(manifest["version"], source_version)
-            self.assertEqual(manifest["includes"], [".apm/agents/"])
+            self.assertEqual(manifest["includes"], [".apm/agents/", ".apm/skills/"])
             self.assertEqual(
                 {path.name for path in (package.root / ".apm/agents").glob("*.md")},
                 {"dry-reviewer.agent.md", "srp-reviewer.agent.md"},
@@ -342,38 +377,49 @@ class HyperfocusReviewerTests(unittest.TestCase):
                 for rule in required_rules:
                     self.assertIn(rule, text)
 
-    def test_publication_discovers_live_capabilities_without_bundled_skill(self) -> None:
+    def test_publication_safeguards_belong_to_skill(self) -> None:
         # Static prompt regressions only. Canonical parity is checked separately.
         source_root = ROOT / "plugins/hyperfocus-review/source"
-        body = " ".join((source_root / "agents/dry-reviewer.md").read_text(encoding="utf-8").split())
+        body = " ".join((source_root / "skills/hyperfocus-review/references/publication.md").read_text(encoding="utf-8").split())
         for rule in (
-            "## 6. Publish review when available and permitted; otherwise report",
             "Discover the remote version-control review service",
             "live tool schemas and current documentation",
             "capabilities, selection semantics, and side effects",
-            "If schemas, documentation, capabilities, or permissions needed for safe publication are unavailable, return the complete report",
+            "If schemas, documentation, capabilities, or permissions needed for safe publication are unavailable, return the consolidated new findings",
             "Honor report-only requests with no publication writes",
             "both base and head AND comparison consistency",
             "Repeat this check before submission.",
             "If pending state from outside this invocation is found, stop publication and report it.",
             "provably target the invocation-owned review by its recorded identifier",
             "Current-user pending-review selection is not safe ID binding",
-            "use only an explicitly authorized equivalent operation or stop with the full report",
+            "use only an explicitly authorized equivalent operation or stop with the full consolidated report",
             "Put unanchorable findings, including whole-codebase or unchanged locations outside the diff, in the review summary",
             "Do not approve, request changes, resolve threads, merge, or delete review state.",
             "Do not blindly retry, switch transports, or silently submit an incomplete review.",
-            "Confirm submission from service evidence before claiming success.",
+            "Confirm submission from service evidence before claiming success",
         ):
             with self.subTest(rule=rule):
                 self.assertIn(rule, body)
-        for obsolete in ("review-publication", "pull_request_review_write", "submit_pending", "COMMENT"):
-            self.assertNotIn(obsolete, body)
-        self.assertEqual(list((source_root / "skills").rglob("*.md")), [])
+        for reviewer in validate_packages.HYPERFOCUS_REVIEWERS:
+            agent = " ".join((source_root / f"agents/{reviewer}.md").read_text(encoding="utf-8").split())
+            self.assertIn("Always return the complete review to the caller, including on direct invocation.", agent)
+            self.assertIn("Never publish reviews or comments or perform any remote write.", agent)
+            self.assertNotIn("Before any remote write:", agent)
         for package in self.packages.values():
-            self.assertFalse((package.root / ".apm/skills").exists())
+            skill = package.root / ".apm/skills/hyperfocus-review"
+            self.assertTrue((skill / "SKILL.md").is_file())
+            for source in (source_root / "skills/hyperfocus-review").rglob("*"):
+                if source.is_file():
+                    generated = skill / source.relative_to(source_root / "skills/hyperfocus-review")
+                    if source.name == "SKILL.md":
+                        self.assertEqual(
+                            generated.read_text().split("---", 2)[2].strip(),
+                            source.read_text().split("---", 2)[2].strip(),
+                        )
+                    else:
+                        self.assertEqual(generated.read_bytes(), source.read_bytes())
             for scope in ("project", "global"):
-                self.assertEqual(len(package.config["tests"][f"{scope}_paths"]), 2)
-        self.assertFalse(any(rule["action"] == "skill" for rule in self.metadata("opencode")["permissions"]))
+                self.assertIn(".agents/skills/hyperfocus-review/SKILL.md", package.config["tests"][f"{scope}_paths"])
 
     def test_web_access_and_direct_edit_restrictions(self) -> None:
         rules = self.metadata("opencode")["permissions"]
@@ -398,8 +444,12 @@ class HyperfocusReviewerTests(unittest.TestCase):
         metadata = self.metadata("opencode")
         rules = metadata["permissions"]
         self.assertEqual(rules[0], {"action": "*", "resource": "*", "effect": "allow"})
-        for action in ("execute", "shell", "external_directory", "github_pull_request_review_write", "github_add_comment_to_pending_review"):
+        for action in ("execute", "shell", "external_directory"):
             self.assertIn({"action": action, "resource": "*", "effect": "allow"}, rules)
+        for action in ("github_pull_request_review_write", "github_add_comment_to_pending_review"):
+            self.assertIn({"action": action, "resource": "*", "effect": "deny"}, rules)
+        for tool in ("github/pull_request_review_write", "github/add_comment_to_pending_review"):
+            self.assertNotIn(tool, self.metadata("copilot")["tools"])
         self.assertFalse(any(rule["effect"] == "ask" for rule in rules))
         for action, effect in (("*", "ask"), ("*", "deny"), ("shell", "ask"), ("shell", "deny"), ("execute", "deny")):
             with self.subTest(action=action, effect=effect):
@@ -439,14 +489,14 @@ class HyperfocusReviewerTests(unittest.TestCase):
         }
         self.assertNotIn("progressive-service-reference", fixtures)
         for case_id, decision in (
-            ("discovery-based-publication", "no publication writes or installed-guide dependency"),
+            ("discovery-based-publication", "no publication writes"),
             ("synthetic-service-publication", "Discover ForgeBox capabilities"),
             ("publication-missing-contract", "missing capability/schema/documentation/permission"),
             ("existing-pending-review", "current-user identity does not prove invocation ownership"),
             ("review-id-selection-ambiguity", "do not create a review"),
             ("stale-publication-comparison", "reviewed base/head AND comparison consistency at both gates"),
             ("publication-anchor-recovery", "never invent anchors"),
-            ("authorized-cli-execution", "request it separately from shell approval"),
+            ("authorized-cli-execution", "Follow the consuming environment's external-service policies"),
         ):
             with self.subTest(case=case_id):
                 self.assertIn(decision, fixtures[case_id]["expected"])

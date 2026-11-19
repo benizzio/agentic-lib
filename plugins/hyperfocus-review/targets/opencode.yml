@@ -26,8 +26,8 @@ frontmatter:
       - {action: github_get_me, resource: "*", effect: allow}
       - {action: github_get_file_contents, resource: "*", effect: allow}
       - {action: github_pull_request_read, resource: "*", effect: allow}
-      - {action: github_pull_request_review_write, resource: "*", effect: allow}
-      - {action: github_add_comment_to_pending_review, resource: "*", effect: allow}
+      - {action: github_pull_request_review_write, resource: "*", effect: deny}
+      - {action: github_add_comment_to_pending_review, resource: "*", effect: deny}
   source/agents/srp-reviewer.md:
     mode: subagent
     permissions:
@@ -51,13 +51,15 @@ frontmatter:
       - {action: github_get_me, resource: "*", effect: allow}
       - {action: github_get_file_contents, resource: "*", effect: allow}
       - {action: github_pull_request_read, resource: "*", effect: allow}
-      - {action: github_pull_request_review_write, resource: "*", effect: allow}
-      - {action: github_add_comment_to_pending_review, resource: "*", effect: allow}
+      - {action: github_pull_request_review_write, resource: "*", effect: deny}
+      - {action: github_add_comment_to_pending_review, resource: "*", effect: deny}
 
 tests:
   project_paths:
     - .opencode/agents/dry-reviewer.md
     - .opencode/agents/srp-reviewer.md
+    - .agents/skills/hyperfocus-review/SKILL.md
   global_paths:
     - .config/opencode/agents/dry-reviewer.md
     - .config/opencode/agents/srp-reviewer.md
+    - .agents/skills/hyperfocus-review/SKILL.md
